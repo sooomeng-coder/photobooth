@@ -72,6 +72,9 @@
   .frameCard:hover { border-color: #00e83a; }
   .frameCard:active { transform: scale(.96); }
   .frameCard img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: contain; background: #111; }
+  .frameCard .liveBadge { position: absolute; top: 10px; right: 10px; background: #fff; color: #00a82a; font-weight: 900;
+    font-size: clamp(11px, 1.6vmin, 16px); letter-spacing: .08em; padding: .25em .7em; border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.4); }
   .frameCard .label { display: block; padding: .6em .8em; color: #fff; font-weight: 800; letter-spacing: .06em;
     font-size: clamp(14px, 2.2vmin, 22px); text-align: center; background: #181818; }
   .frameCard .num { position: absolute; top: 10px; left: 10px; background: #00e83a; color: #fff; font-weight: 900;
@@ -149,7 +152,7 @@ async function loadFrames() {
     if (!r.ok) throw new Error(r.status);
     const list = await r.json();
     if (!Array.isArray(list) || !list.length) throw new Error('empty');
-    return list.filter(f => f && f.src);
+    return list.filter(f => f && (f.src || f.live));
   } catch (e) {
     console.warn('frames.json을 읽지 못해 기본 프레임을 사용합니다.', e);
     return FALLBACK_FRAMES;
@@ -163,7 +166,8 @@ const video = $('video');
 const live = $('live');
 const lctx = live.getContext('2d');
 
-let frameImg, overlay, stream = null, rafId = 0, busy = false;
+// cur: 지금 선택된 프레임 { W, H, overlay, bg, stickers, live }
+let cur = null, stream = null, rafId = 0, busy = false;
 let retakesLeft = CONFIG.MAX_RETAKE, resultBlob = null;
 
 /* ================= 이미지 로드 & 그린스크린 처리 ================= */
@@ -206,12 +210,30 @@ function drawMirroredCover(ctx, src, sw, sh, dx, dy, dw, dh) {
   ctx.restore();
 }
 
+// 사람만 오려낸 카메라 영상을 그릴 임시 캔버스
+const personCanvas = document.createElement('canvas'), pctx = personCanvas.getContext('2d');
+
 function compose(ctx, W, H) {
   const sw = video.videoWidth, sh = video.videoHeight;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
-  // 카메라 한 화면을 프레임 전체 뒤에 깔고, 초록 구멍으로 보이게 함
-  if (sw && sh) drawMirroredCover(ctx, video, sw, sh, 0, 0, W, H);
-  ctx.drawImage(overlay, 0, 0, W, H);
+  if (cur.bg) {
+    // 배경 → 사람만 오려서 위에 (마스크가 아직 없으면 배경만)
+    ctx.drawImage(cur.bg, 0, 0, W, H);
+    if (sw && sh && maskReady) {
+      if (personCanvas.width !== W || personCanvas.height !== H) { personCanvas.width = W; personCanvas.height = H; }
+      pctx.globalCompositeOperation = 'source-over';
+      pctx.clearRect(0, 0, W, H);
+      drawMirroredCover(pctx, video, sw, sh, 0, 0, W, H);
+      pctx.globalCompositeOperation = 'destination-in';
+      drawMirroredCover(pctx, maskCanvas, maskCanvas.width, maskCanvas.height, 0, 0, W, H);
+      ctx.drawImage(personCanvas, 0, 0);
+    }
+  } else if (sw && sh) {
+    // 카메라 한 화면을 프레임 전체 뒤에 깔고, 초록 구멍으로 보이게 함
+    drawMirroredCover(ctx, video, sw, sh, 0, 0, W, H);
+  }
+  if (cur.overlay) ctx.drawImage(cur.overlay, 0, 0, W, H);
+  if (cur.stickers && sw && sh) drawStickers(ctx, W, H, sw, sh);
 }
 
 function fitLiveCanvas() {
@@ -220,10 +242,148 @@ function fitLiveCanvas() {
   if (live.width !== w || live.height !== h) { live.width = w; live.height = h; }
 }
 
-function loop() {
+function loop(now) {
   fitLiveCanvas();
+  if (cur.live) infer(now || performance.now());
   compose(lctx, live.width, live.height);
   rafId = requestAnimationFrame(loop);
+}
+
+/* ================= 반응형 프레임: 얼굴 인식 + 사람 오려내기 ================= */
+const VISION = {
+  BASE: 'vendor/mediapipe/',
+  FACE_MODEL: 'models/blaze_face_full_range.tflite', // 1.5~3m 떨어진 여러 명용
+  SEG_MODEL: 'models/selfie_segmenter.tflite',
+  INFER_MS: 45,      // 인식 간격(ms). 화면은 매 프레임 그리고, 인식은 이 간격으로
+  INPUT_W: 640,      // 인식용으로 줄인 영상 폭
+  MAX_FACES: 6,
+  HOLD_MS: 400,      // 얼굴을 잠깐 놓쳐도 스티커를 유지하는 시간
+  SMOOTH: 0.55,      // 스티커 떨림 줄이기 (0~1, 클수록 새 위치를 빨리 따라감)
+};
+
+// 스티커 위치 규칙. 기준 길이 d = 두 눈 사이 거리 (화면 기준).
+// at: 붙는 점, w: PNG 가로가 d의 몇 배인지, ax/ay: PNG에서 그 점에 맞출 위치(0~1)
+// 좌표는 얼굴 기준: u = 눈을 잇는 방향(오른쪽 +), v = 아래쪽 +
+const ANCHORS = {
+  'eye-left':    { at: f => f.eyeL, w: 1, ax: .5, ay: 0 },
+  'eye-right':   { at: f => f.eyeR, w: 1, ax: .5, ay: 0 },
+  'cheek-left':  { at: f => off(f, f.eyeL, -.15, .75), w: 1, ax: .5, ay: .5 },
+  'cheek-right': { at: f => off(f, f.eyeR, .15, .75), w: 1, ax: .5, ay: .5 },
+  'nose':        { at: f => f.nose, w: 1, ax: .5, ay: .5 },
+  'mouth':       { at: f => f.mouth, w: 1, ax: .5, ay: .5 },
+  'face':        { at: f => f.nose, w: 2.2, ax: .5, ay: .5 },
+  'head':        { at: f => off(f, mid(f.eyeL, f.eyeR), 0, -.9), w: 2.2, ax: .5, ay: 1 },
+};
+const PAIRS = { eye: ['eye-left', 'eye-right'], cheek: ['cheek-left', 'cheek-right'] };
+const mid = (a, b) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+function off(f, p, du, dv) {  // 얼굴 기준 방향으로 d 단위만큼 이동
+  const c = Math.cos(f.angle), s = Math.sin(f.angle);
+  return { x: p.x + (du * c - dv * s) * f.d, y: p.y + (du * s + dv * c) * f.d };
+}
+
+let visionPromise = null, vision = null;
+function loadVision() {
+  if (!visionPromise) visionPromise = (async () => {
+    const mp = await import('./' + VISION.BASE + 'vision_bundle.mjs');
+    const files = await mp.FilesetResolver.forVisionTasks(VISION.BASE + 'wasm');
+    const create = async (Task, model, opts) => {
+      for (const delegate of ['GPU', 'CPU']) {
+        try {
+          return await Task.createFromOptions(files, { baseOptions: { modelAssetPath: VISION.BASE + model, delegate }, runningMode: 'VIDEO', ...opts });
+        } catch (e) { if (delegate === 'CPU') throw e; console.warn('GPU 사용 불가, CPU로 전환', e); }
+      }
+    };
+    const [face, seg] = await Promise.all([
+      create(mp.FaceDetector, VISION.FACE_MODEL, { minDetectionConfidence: 0.5 }),
+      create(mp.ImageSegmenter, VISION.SEG_MODEL, { outputConfidenceMasks: true, outputCategoryMask: false }),
+    ]);
+    vision = { face, seg };
+    return vision;
+  })().catch(e => { visionPromise = null; throw e; });
+  return visionPromise;
+}
+
+const inferCanvas = document.createElement('canvas');
+const ictx = inferCanvas.getContext('2d', { willReadFrequently: true });
+const maskCanvas = document.createElement('canvas'), mctx = maskCanvas.getContext('2d');
+let maskData = null, maskReady = false, lastInfer = 0, lastTs = 0;
+let tracks = [];  // 영상 좌표(0~1, 좌우반전 전)로 저장한 얼굴들
+
+function resetVisionState() { maskReady = false; tracks = []; }
+
+function infer(now) {
+  if (!vision || !video.videoWidth || now - lastInfer < VISION.INFER_MS) return;
+  lastInfer = now;
+  const ts = lastTs = Math.max(now, lastTs + 1);  // 타임스탬프는 계속 증가해야 함
+  const w = VISION.INPUT_W, h = Math.round(w * video.videoHeight / video.videoWidth);
+  if (inferCanvas.width !== w || inferCanvas.height !== h) { inferCanvas.width = w; inferCanvas.height = h; }
+  ictx.drawImage(video, 0, 0, w, h);
+  try {
+    if (cur.stickers) updateTracks(vision.face.detectForVideo(inferCanvas, ts).detections, now);
+    if (cur.bg) vision.seg.segmentForVideo(inferCanvas, ts, r => updateMask(r.confidenceMasks && r.confidenceMasks[0]));
+  } catch (e) { console.warn('인식 오류', e); }
+}
+
+function updateMask(mask) {
+  if (!mask) return;
+  const w = mask.width, h = mask.height, conf = mask.getAsFloat32Array();
+  if (maskCanvas.width !== w || maskCanvas.height !== h) { maskCanvas.width = w; maskCanvas.height = h; maskData = null; }
+  if (!maskData) { maskData = mctx.createImageData(w, h); maskData.data.fill(255); }
+  const d = maskData.data;
+  for (let i = 0, j = 3; i < conf.length; i++, j += 4) {
+    const a = (conf[i] - 0.35) * 3.3;  // 0.35~0.65 사이를 부드러운 경계로
+    d[j] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255;
+  }
+  mctx.putImageData(maskData, 0, 0);
+  maskReady = true;
+}
+
+function updateTracks(dets, now) {
+  const faces = dets.slice(0, VISION.MAX_FACES).map(det => {
+    const k = det.keypoints;  // 0,1: 눈  2: 코끝  3: 입
+    return k && k.length >= 4 ? { e1: k[0], e2: k[1], nose: k[2], mouth: k[3] } : null;
+  }).filter(Boolean);
+  const used = new Set();
+  for (const f of faces) {
+    const c = mid(f.e1, f.e2);
+    let best = null, bd = Infinity;
+    for (const t of tracks) {
+      if (used.has(t)) continue;
+      const dd = Math.hypot(t.c.x - c.x, t.c.y - c.y);
+      if (dd < bd) { bd = dd; best = t; }
+    }
+    const pts = ['e1', 'e2', 'nose', 'mouth'];
+    if (best && bd < 0.15) {
+      const a = VISION.SMOOTH;
+      for (const p of pts) { best[p] = { x: best[p].x + (f[p].x - best[p].x) * a, y: best[p].y + (f[p].y - best[p].y) * a }; }
+      best.c = mid(best.e1, best.e2); best.seen = now; used.add(best);
+    } else {
+      const t = { ...f, c, seen: now }; tracks.push(t); used.add(t);
+    }
+  }
+  tracks = tracks.filter(t => now - t.seen < VISION.HOLD_MS);
+}
+
+function drawStickers(ctx, W, H, sw, sh) {
+  // 영상 좌표 → 화면 좌표 (drawMirroredCover와 같은 변환)
+  const scale = Math.max(W / sw, H / sh);
+  const cw = W / scale, ch = H / scale, sx = (sw - cw) / 2, sy = (sh - ch) / 2;
+  const toScreen = p => ({ x: W - (p.x * sw - sx) * scale, y: (p.y * sh - sy) * scale });
+  for (const t of tracks) {
+    let a = toScreen(t.e1), b = toScreen(t.e2);
+    if (a.x > b.x) [a, b] = [b, a];  // 화면 왼쪽 눈이 eyeL
+    const f = { eyeL: a, eyeR: b, nose: toScreen(t.nose), mouth: toScreen(t.mouth),
+      d: Math.hypot(b.x - a.x, b.y - a.y), angle: Math.atan2(b.y - a.y, b.x - a.x) };
+    if (f.d < 4) continue;
+    for (const [name, img] of cur.stickerList) {
+      const A = ANCHORS[name], p = A.at(f);
+      const w = A.w * f.d, h = w * img.naturalHeight / img.naturalWidth;
+      ctx.save();
+      ctx.translate(p.x, p.y); ctx.rotate(f.angle);
+      ctx.drawImage(img, -A.ax * w, -A.ay * h, w, h);
+      ctx.restore();
+    }
+  }
 }
 
 /* ================= 카메라 ================= */
@@ -260,8 +420,7 @@ async function selectFrame(i) {
     selecting = true;
     document.body.style.cursor = 'progress';
     try {
-      const img = await loadImg(f.src);
-      overlayCache.set(i, { img, overlay: buildOverlay(img) });
+      overlayCache.set(i, f.live ? await prepareLive(f) : await prepareStatic(f));
     } catch (e) {
       console.error('프레임을 불러오지 못했습니다:', f.src, e);
       return;
@@ -270,11 +429,46 @@ async function selectFrame(i) {
       document.body.style.cursor = '';
     }
   }
-  ({ img: frameImg, overlay } = overlayCache.get(i));
-  const ar = frameImg.naturalWidth / frameImg.naturalHeight;
+  cur = overlayCache.get(i);
+  resetVisionState();
+  const ar = cur.W / cur.H;
   for (const id of ['shootScreen', 'resultScreen']) screens[id.replace('Screen', '')].querySelector('.stage').style.setProperty('--ar', ar);
   show('shoot');
   await startCamera();
+  if (cur.live) {
+    const msg = $('camMsg');
+    if (!vision) { msg.innerHTML = '얼굴 인식을 준비하고 있어요…'; msg.classList.remove('hidden'); }
+    try { await loadVision(); if (stream) msg.classList.add('hidden'); }
+    catch (e) {
+      console.error(e);
+      msg.innerHTML = '얼굴 인식을 불러오지 못했어요.<br>새로고침 후 다시 시도해 주세요.'; msg.classList.remove('hidden');
+    }
+  }
+}
+
+async function prepareStatic(f) {
+  const img = await loadImg(f.src);
+  return { W: img.naturalWidth, H: img.naturalHeight, overlay: buildOverlay(img) };
+}
+
+async function prepareLive(f) {
+  loadVision().catch(() => {});  // 이미지 받는 동안 같이 준비
+  const [bg, fr, ...st] = await Promise.all([
+    f.background ? loadImg(f.background) : null,
+    f.src ? loadImg(f.src) : null,
+    ...Object.values(f.stickers || {}).map(loadImg),
+  ]);
+  const names = Object.keys(f.stickers || {});
+  const byName = Object.fromEntries(names.map((n, i) => [n, st[i]]));
+  // eye.png 하나만 있으면 양쪽 눈에 같이 사용 (cheek도 동일)
+  for (const [one, [l, r]] of Object.entries(PAIRS)) {
+    if (byName[one]) { byName[l] = byName[l] || byName[one]; byName[r] = byName[r] || byName[one]; delete byName[one]; }
+  }
+  const stickerList = Object.entries(byName).filter(([n]) => ANCHORS[n]);
+  const W = fr ? fr.naturalWidth : f.width || (bg && bg.naturalWidth) || 1640;
+  const H = fr ? fr.naturalHeight : f.height || (bg && bg.naturalHeight) || 2360;
+  return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
+    stickers: stickerList.length > 0, stickerList };
 }
 
 function buildFrameList() {
@@ -285,7 +479,8 @@ function buildFrameList() {
     b.innerHTML = `<span class="num">${i + 1}</span><img alt=""><span class="label"></span>`;
     const im = b.querySelector('img');
     im.decoding = 'async';
-    im.src = f.thumb || f.src;
+    im.src = f.thumb || f.src || f.background;
+    if (f.live) b.insertAdjacentHTML('beforeend', '<span class="liveBadge">LIVE</span>');
     if (f.thumb) im.onerror = () => { im.onerror = null; im.src = f.src; };
     b.querySelector('.label').textContent = f.name || `FRAME ${i + 1}`;
     b.addEventListener('click', () => selectFrame(i));
@@ -317,7 +512,7 @@ async function shoot() {
 
   // 원본 프레임 해상도로 합성
   const out = document.createElement('canvas');
-  out.width = frameImg.naturalWidth; out.height = frameImg.naturalHeight;
+  out.width = cur.W; out.height = cur.H;
   compose(out.getContext('2d'), out.width, out.height);
 
   const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');

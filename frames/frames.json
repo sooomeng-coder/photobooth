@@ -5,5 +5,6 @@
   {"name": "FRAME 4", "src": "frames/frame4.png", "thumb": "frames/thumbs/frame4.jpg"},
   {"name": "FRAME 5", "src": "frames/frame5.png", "thumb": "frames/thumbs/frame5.jpg"},
   {"name": "FRAME 6", "src": "frames/frame6.png", "thumb": "frames/thumbs/frame6.jpg"},
-  {"name": "FRAME 7", "src": "frames/frame7.png", "thumb": "frames/thumbs/frame7.jpg"}
+  {"name": "FRAME 7", "src": "frames/frame7.png", "thumb": "frames/thumbs/frame7.jpg"},
+  {"name": "눈물", "dir": "frames/눈물", "live": true, "background": "frames/눈물/background.jpg", "width": 1640, "height": 2360, "stickers": {"eye-left": "frames/눈물/eye-left.png", "eye-right": "frames/눈물/eye-right.png"}, "thumb": "frames/thumbs/눈물.jpg"}
 ]

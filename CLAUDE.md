@@ -50,7 +50,7 @@ frames/thumbs/frame1.jpg 선택 화면용 썸네일 (가로 600px JPEG)
 
 ### 프레임 이미지 규칙
 - 얼굴이 들어갈 자리를 순수 초록(#00FF00 계열)으로 칠한 이미지.
-- 현재 프레임 7종 (frame1~7). frame7은 투명 PNG(투명 사각형 창 + 반투명 자막 바).
+- 현재 프레임 8종 (frame1~7 + 반응형 `눈물`). frame7은 투명 PNG(투명 사각형 창 + 반투명 자막 바).
 - frame1~5: frame1은 펭귄 탈 4구멍(원본 5661×3894 → 가로 2400px), frame2~5는 업로드된 `Group 7~10.png`를 변환한 것(1~2구멍).
 - 업로드된 원본은 RGB로 변환(가장자리 반투명 1px 제거), 가로 2400px 초과면 줄임, 파일명은 `frameN.png`로 정리.
 - 선택 화면 카드의 썸네일 영역은 4:3 고정(`object-fit: contain`)이라 프레임 비율이 달라도 카드 크기가 같음.
@@ -71,6 +71,29 @@ frames/thumbs/frame1.jpg 선택 화면용 썸네일 (가로 600px JPEG)
 - 반드시 PNG로 올릴 것(JPG는 투명도가 사라짐). 처리 스크립트는 투명도가 있으면 RGBA 그대로 유지하고,
   가장자리 1px에만 반투명이 있으면(내보내기 찌꺼기) RGB로 바꿈
 - `buildOverlay`는 초록 판정 투명도를 원래 알파에 곱함
+
+### 반응형(LIVE) 프레임 — 얼굴 인식으로 움직이는 스티커
+`frames/` 안의 **하위 폴더 하나 = 프레임 하나** (폴더 이름 = 카드 이름, 카드에 LIVE 배지). 예: `frames/눈물/`
+- `background.*` — 사람 뒤에 깔리는 배경. 있으면 카메라에서 **사람만 오려서** 배경 위에 올림(구멍 필요 없음).
+  처리 스크립트가 아이패드 비율(세로 1640×2360, 가로 2360×1640, `frame.png`가 있으면 그 크기)로 꽉 차게 잘라 `background.jpg`로 저장
+- `frame.png` — (선택) 맨 위에 덮는 고정 프레임. 초록/투명 구멍 규칙 동일. 배경이 없으면 지금처럼 카메라 전체 + 이 프레임
+- 스티커 PNG — **파일 이름 = 붙는 위치**. 각 사람 얼굴을 따라 움직이고 크기·기울기도 따라감. 4명이면 4명 모두에 붙음
+  - 기준 길이 d = 두 눈 사이 거리. 아래 "PNG 가로"는 d의 배수
+  | 파일 | 붙는 점 | PNG 가로 | PNG의 어느 점을 맞추나 |
+  |---|---|---|---|
+  | `eye.png` (또는 `eye-left/right.png`) | 눈동자 중심 | 1d | 맨 위 가운데 |
+  | `cheek.png` (또는 `cheek-left/right.png`) | 눈 아래 0.75d, 바깥 0.15d | 1d | 가운데 |
+  | `nose.png` | 코끝 | 1d | 가운데 |
+  | `mouth.png` | 입 | 1d | 가운데 |
+  | `face.png` | 코끝 | 2.2d | 가운데 |
+  | `head.png` | 두 눈 가운데에서 위로 0.9d | 2.2d | 맨 아래 가운데 |
+  - left/right는 **화면 기준**(보는 사람 기준) 왼쪽/오른쪽
+- 코드: `index.html`의 `VISION`(설정), `ANCHORS`(위치 규칙), `loadVision()`, `infer()`, `updateMask()`, `updateTracks()`, `drawStickers()`, `prepareLive()`
+  - MediaPipe `FaceDetector`(full-range 모델, 눈·코·입 키포인트) + `ImageSegmenter`(selfie_segmenter). `vendor/mediapipe/`에 자체 호스팅
+  - 인식은 영상을 가로 640px로 줄여 45ms 간격으로, 화면은 매 프레임. 얼굴 위치는 부드럽게(SMOOTH) + 잠깐 놓쳐도 400ms 유지
+  - GPU 사용 실패 시 CPU로 자동 전환
+- 지금 프레임: `눈물` — 하늘 배경(`2.jpg` 9:16 → 1640×2360 크롭) + 눈물 도트(`eye-left/right.png`, Claude가 그림, 레퍼런스: 눈 아래로 하늘색 도트 두 줄)
+- 테스트: Chromium `--use-file-for-fake-video-capture=파일.y4m`로 얼굴이 나오는 영상을 가짜 카메라로 쓸 수 있음
 
 ## 다음 할 일 (디벨롭)
 1. ~~이미지 파일 분리~~ (완료)

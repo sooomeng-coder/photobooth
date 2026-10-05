@@ -8,6 +8,12 @@
 - 썸네일(frames/thumbs/frameN.jpg)을 만들고 frames.json 끝에 추가한다
 - 썸네일이 빠진 기존 프레임도 썸네일을 만들어 준다
 
+반응형(라이브) 프레임: frames/ 안의 하위 폴더 하나 = 프레임 하나 (폴더 이름 = 카드 이름)
+- background.*  사람 뒤에 깔리는 배경. 있으면 카메라에서 사람만 오려서 그 위에 올림.
+                아이패드 비율(세로 1640x2360 / 가로 2360x1640, frame.png가 있으면 그 크기)로 꽉 차게 잘라 background.jpg로 저장
+- frame.png     맨 위에 덮는 고정 프레임 (초록/투명 구멍 규칙 동일)
+- 스티커 PNG    파일 이름 = 붙는 위치 (STICKERS 참고). 얼굴을 따라 움직임
+
 사용: python3 tools/process_frames.py   (저장소 루트에서 실행, Pillow 필요)
 """
 import json
@@ -23,6 +29,8 @@ LIST = FRAMES / 'frames.json'
 MAX_SIDE = 2400
 THUMB_SIZE = 600
 EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
+STICKERS = ['eye', 'eye-left', 'eye-right', 'cheek', 'cheek-left', 'cheek-right', 'nose', 'mouth', 'face', 'head']
+LIVE_SIZE = {'portrait': (1640, 2360), 'landscape': (2360, 1640)}  # 아이패드 10세대/Air 11" 해상도
 # 이런 파일명은 카드 이름으로 쓰지 않고 FRAME N으로 붙임
 GENERIC = re.compile(r'^(group|frame|image|img|untitled|제목\s*없음|그룹)[\s_-]*\d*$', re.I)
 
@@ -52,10 +60,83 @@ def make_thumb(im, dest):
     bg.save(dest, quality=82, optimize=True)
 
 
+def find(folder, stem):
+    for ext in ('.png', '.jpg', '.jpeg', '.webp'):
+        for p in folder.iterdir():
+            if p.is_file() and p.stem.lower() == stem and p.suffix.lower() == ext:
+                return p
+    return None
+
+
+def cover_crop(im, size):
+    """비율 유지하며 size를 꽉 채우도록 가운데 기준으로 자르고 맞춤."""
+    W, H = size
+    s = max(W / im.width, H / im.height)
+    im = im.resize((max(W, round(im.width * s)), max(H, round(im.height * s))), Image.LANCZOS)
+    x, y = (im.width - W) // 2, (im.height - H) // 2
+    return im.crop((x, y, x + W, y + H))
+
+
+def process_live(folder, old):
+    rel = lambda p: p.relative_to(ROOT).as_posix()
+    entry = {'name': (old or {}).get('name', folder.name), 'live': True}
+    size = None
+
+    fr = find(folder, 'frame')
+    if fr:
+        im = Image.open(fr).convert('RGBA')
+        if max(im.size) > MAX_SIDE:
+            s = MAX_SIDE / max(im.size)
+            im = im.resize((round(im.width * s), round(im.height * s)), Image.LANCZOS)
+        if not has_real_alpha(im):
+            im = im.convert('RGB')
+        dest = folder / 'frame.png'
+        im.save(dest, optimize=True)
+        if fr != dest:
+            fr.unlink()
+        entry['src'] = rel(dest)
+        size = im.size
+
+    bg = find(folder, 'background') or find(folder, 'bg')
+    if bg:
+        im = Image.open(bg)
+        im.load()
+        if size is None:
+            size = LIVE_SIZE['landscape' if im.width > im.height else 'portrait']
+        dest = folder / 'background.jpg'
+        if im.size != size or bg != dest:
+            flat = Image.new('RGB', im.size, (0, 0, 0))
+            flat.paste(im.convert('RGBA'), mask=im.convert('RGBA').getchannel('A'))
+            cover_crop(flat, size).save(dest, quality=90, optimize=True)
+            if bg != dest:
+                bg.unlink()
+        entry['background'] = rel(dest)
+
+    entry['width'], entry['height'] = size or LIVE_SIZE['portrait']
+    stickers = {}
+    for k in STICKERS:
+        p = find(folder, k)
+        if p:
+            stickers[k] = rel(p)
+    if stickers:
+        entry['stickers'] = stickers
+
+    # 썸네일: 배경 + 프레임 (스티커는 얼굴이 있어야 해서 생략)
+    base = Image.new('RGBA', (entry['width'], entry['height']), (17, 17, 17, 255))
+    if bg:
+        base.alpha_composite(Image.open(ROOT / entry['background']).convert('RGBA'))
+    if fr:
+        base.alpha_composite(Image.open(ROOT / entry['src']).convert('RGBA'))
+    thumb = THUMBS / f'{folder.name}.jpg'
+    make_thumb(base, thumb)
+    entry['thumb'] = rel(thumb)
+    return entry
+
+
 def main():
     frames = json.loads(LIST.read_text(encoding='utf-8')) if LIST.exists() else []
-    known = {f['src'] for f in frames}
-    used = {int(m.group(1)) for f in frames if (m := re.search(r'frame(\d+)\.png$', f['src']))}
+    known = {f.get('src') for f in frames}
+    used = {int(m.group(1)) for f in frames if (m := re.search(r'frame(\d+)\.png$', f.get('src', '')))}
     used |= {int(m.group(1)) for p in FRAMES.glob('frame*.png') if (m := re.fullmatch(r'frame(\d+)\.png', p.name))}
     next_no = max(used, default=0) + 1
 
@@ -65,6 +146,21 @@ def main():
         key=natural_key)
 
     changed = False
+    # 반응형 프레임 폴더: 매번 다시 훑어서 새 파일/교체된 파일을 반영 (이름과 순서는 유지)
+    for folder in sorted((d for d in FRAMES.iterdir() if d.is_dir() and d.name != 'thumbs'), key=natural_key):
+        key = f'frames/{folder.name}'
+        idx = next((i for i, f in enumerate(frames) if f.get('dir') == key), None)
+        old = frames[idx] if idx is not None else None
+        entry = process_live(folder, old)
+        entry = {'name': entry.pop('name'), 'dir': key, **entry}
+        if entry != old:
+            if idx is None:
+                frames.append(entry)
+            else:
+                frames[idx] = entry
+            print(f'반응형 프레임: {folder.name} {entry.get("stickers", {})}')
+            changed = True
+
     for p in new_files:
         im = Image.open(p)
         im.load()
@@ -89,6 +185,8 @@ def main():
         changed = True
 
     for f in frames:
+        if f.get('live'):
+            continue
         src = ROOT / f['src']
         thumb = f.get('thumb')
         if src.exists() and thumb and not (ROOT / thumb).exists():
