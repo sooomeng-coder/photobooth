@@ -33,6 +33,8 @@ STICKERS = ['eye', 'eye-left', 'eye-right', 'cheek', 'cheek-left', 'cheek-right'
 LIVE_SIZE = {'portrait': (1640, 2360), 'landscape': (2360, 1640)}  # 아이패드 10세대/Air 11" 해상도
 # 이런 파일명은 카드 이름으로 쓰지 않고 FRAME N으로 붙임
 GENERIC = re.compile(r'^(group|frame|image|img|untitled|제목\s*없음|그룹)[\s_-]*\d*$', re.I)
+# 해시처럼 생긴 이름이나 편집 앱/스크린샷 기본 이름도 FRAME N으로
+GENERIC_PARTS = re.compile(r'[0-9a-f]{12,}|photoroom|screenshot|스크린샷|^img[_-]|^dsc|^kakaotalk', re.I)
 
 
 def natural_key(p):
@@ -176,7 +178,8 @@ def main():
         dest = FRAMES / name
         im.save(dest, optimize=True)
         make_thumb(im, THUMBS / f'frame{next_no}.jpg')
-        label = p.stem if not GENERIC.match(p.stem.strip()) else f'FRAME {next_no}'
+        stem = p.stem.strip()
+        label = f'FRAME {next_no}' if GENERIC.match(stem) or GENERIC_PARTS.search(stem) else stem
         frames.append({'name': label, 'src': f'frames/{name}', 'thumb': f'frames/thumbs/frame{next_no}.jpg'})
         if p != dest:
             p.unlink()
