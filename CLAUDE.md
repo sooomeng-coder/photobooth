@@ -50,18 +50,27 @@ frames/thumbs/frame1.jpg 선택 화면용 썸네일 (가로 600px JPEG)
 
 ### 프레임 이미지 규칙
 - 얼굴이 들어갈 자리를 순수 초록(#00FF00 계열)으로 칠한 이미지.
-- 현재 프레임 5종 (frame1~5). frame1은 펭귄 탈 4구멍(원본 5661×3894 → 가로 2400px), frame2~5는 업로드된 `Group 7~10.png`를 변환한 것(1~2구멍).
+- 현재 프레임 7종 (frame1~7). frame7은 투명 PNG(투명 사각형 창 + 반투명 자막 바).
+- frame1~5: frame1은 펭귄 탈 4구멍(원본 5661×3894 → 가로 2400px), frame2~5는 업로드된 `Group 7~10.png`를 변환한 것(1~2구멍).
 - 업로드된 원본은 RGB로 변환(가장자리 반투명 1px 제거), 가로 2400px 초과면 줄임, 파일명은 `frameN.png`로 정리.
 - 선택 화면 카드의 썸네일 영역은 4:3 고정(`object-fit: contain`)이라 프레임 비율이 달라도 카드 크기가 같음.
 - 시작 이미지는 같은 그림에 START 글자가 있는 버전 (START 위치: 가로 24~76%, 세로 64~86% 부근).
 
-### 프레임 추가 방법
-1. 그린스크린 PNG를 가로 2400px 정도로 리사이즈해서 `frames/frame2.png` 등으로 넣기
-2. (선택) 가로 600px JPEG 썸네일을 `frames/thumbs/frame2.jpg`로 넣기 — 없으면 원본을 썸네일로 씀(선택 화면 로딩이 느려짐)
-3. `frames/frames.json`에 한 줄 추가:
-   `{ "name": "FRAME 2", "src": "frames/frame2.png", "thumb": "frames/thumbs/frame2.jpg" }`
-- 썸네일 만들기 예: `python3 -c "from PIL import Image; im=Image.open('frames/frame2.png').convert('RGB'); im.thumbnail((600,600)); im.save('frames/thumbs/frame2.jpg', quality=82)"`
+### 프레임 추가 방법 (자동)
+**`main` 브랜치의 `frames/` 폴더에 이미지를 올리기만 하면 됨.** GitHub Actions(`.github/workflows/frames.yml`)가
+`tools/process_frames.py`를 돌려서 자동으로 정리하고 `main`에 커밋 → Pages 재배포.
+- `frames.json`에 없는 이미지(png/jpg/webp)를 `frameN.png`로 이름 변경, 긴 변 2400px 초과면 축소
+- 썸네일 `frames/thumbs/frameN.jpg` 생성, `frames.json` 끝에 등록
+- 카드 이름: 파일명(예: `토마토.png` → "토마토"). `Group 11` 같은 기본 이름이면 `FRAME N`. 이름은 `frames.json`에서 바꾸면 됨
+- 로컬에서 직접 돌리기: `python3 tools/process_frames.py` (Pillow 필요)
 - 크로마키 처리(`getImageData`) 때문에 프레임 이미지는 **같은 출처(이 저장소)** 에 있어야 함. 외부 URL 쓰지 말 것.
+
+### 투명 PNG 프레임
+- 투명한 부분 = 카메라가 보이는 자리 (초록과 같은 역할). 반투명 = 카메라 위에 반투명하게 겹침(자막 바 등)
+- 초록 구멍과 투명 구멍을 한 프레임에 섞어 써도 됨
+- 반드시 PNG로 올릴 것(JPG는 투명도가 사라짐). 처리 스크립트는 투명도가 있으면 RGBA 그대로 유지하고,
+  가장자리 1px에만 반투명이 있으면(내보내기 찌꺼기) RGB로 바꿈
+- `buildOverlay`는 초록 판정 투명도를 원래 알파에 곱함
 
 ## 다음 할 일 (디벨롭)
 1. ~~이미지 파일 분리~~ (완료)

@@ -184,7 +184,7 @@ function buildOverlay(img) {
     if (diff >= HI) { p[i + 3] = 0; }
     else if (diff > LO) {
       const a = 1 - (diff - LO) / (HI - LO);
-      p[i + 3] = Math.round(255 * a);
+      p[i + 3] = Math.round(p[i + 3] * a); // 원래 투명도(PNG 알파)에 곱함
       p[i + 1] = Math.max(r, b);     // 초록 번짐 제거
     }
   }

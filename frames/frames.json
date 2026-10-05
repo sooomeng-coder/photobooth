@@ -3,5 +3,7 @@
   {"name": "FRAME 2", "src": "frames/frame2.png", "thumb": "frames/thumbs/frame2.jpg"},
   {"name": "FRAME 3", "src": "frames/frame3.png", "thumb": "frames/thumbs/frame3.jpg"},
   {"name": "FRAME 4", "src": "frames/frame4.png", "thumb": "frames/thumbs/frame4.jpg"},
-  {"name": "FRAME 5", "src": "frames/frame5.png", "thumb": "frames/thumbs/frame5.jpg"}
+  {"name": "FRAME 5", "src": "frames/frame5.png", "thumb": "frames/thumbs/frame5.jpg"},
+  {"name": "FRAME 6", "src": "frames/frame6.png", "thumb": "frames/thumbs/frame6.jpg"},
+  {"name": "FRAME 7", "src": "frames/frame7.png", "thumb": "frames/thumbs/frame7.jpg"}
 ]

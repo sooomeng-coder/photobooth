@@ -1,0 +1,44 @@
+# frames/ 폴더에 이미지를 올리면 자동으로 정리(frameN.png, 썸네일, frames.json 등록)해서 main에 커밋
+name: process frames
+
+on:
+  push:
+    branches: [main]
+    paths: ['frames/**', 'tools/process_frames.py']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: process-frames
+  cancel-in-progress: false
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pillow
+      - run: python3 tools/process_frames.py
+      - name: commit
+        id: commit
+        run: |
+          git add -A frames
+          if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "프레임 자동 등록"
+          git pull --rebase origin main
+          git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      # 봇 커밋은 Pages 빌드를 자동으로 다시 돌리지 않을 수 있어서 직접 요청
+      - name: request pages build
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
