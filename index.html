@@ -176,6 +176,16 @@
   #retakeLayer button:hover, #retakeLayer button:focus-visible { outline: 3px solid #00e83a; background: rgba(0,232,58,.15); }
   #retakeLayer.used button { display: none; }
 
+  /* 디자인 이미지로 바꾼 요소 (assets/ui/manifest.json, 디자인/ 폴더) */
+  .skin { background-color: transparent !important; background-position: center !important; background-size: contain !important;
+    background-repeat: no-repeat !important; border: 0 !important; box-shadow: none !important;
+    color: transparent !important; text-shadow: none !important; }
+  .skin.btn { width: clamp(150px, 25vmin, 270px); aspect-ratio: 3 / 1; padding: 0; }
+  .skin.btn:disabled { opacity: .35; }
+  .titleImg { display: block; max-width: min(90vw, 900px); height: clamp(48px, 9vmin, 120px); object-fit: contain; margin: 0 auto; }
+  #countdown img { width: min(40vmin, 360px); height: min(40vmin, 360px); object-fit: contain; filter: drop-shadow(0 6px 20px rgba(0,0,0,.45)); }
+  .menu.skinBg, #frameScreen.skinBg { background: #0d0d0d center / cover no-repeat; }
+
   .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center;
     color: #fff; background: rgba(0,0,0,.65); font-size: clamp(16px, 2.6vmin, 26px); line-height: 1.6; padding: 24px; }
   .hidden { display: none !important; }
@@ -193,7 +203,7 @@
 
 <!-- 1-1. 모드 선택: 4컷 / 9컷 / 1장 -->
 <section id="modeScreen" class="screen menu">
-  <h1>HOW MANY <span>CUTS?</span></h1>
+  <h1 id="modeTitle">HOW MANY <span>CUTS?</span></h1>
   <p class="sub">원하는 사진 구성을 골라주세요</p>
   <div id="modeList">
     <button class="modeCard" data-mode="4">
@@ -229,7 +239,7 @@
 
 <!-- 2. 프레임 선택 화면 (1장 모드) -->
 <section id="frameScreen" class="screen">
-  <h1>CHOOSE <span>FRAME</span></h1>
+  <h1 id="frameTitle">CHOOSE <span>FRAME</span></h1>
   <p>마음에 드는 프레임을 눌러주세요</p>
   <div id="frameList"></div>
   <button class="home" data-mode-back aria-label="모드 다시 고르기">←</button>
@@ -269,7 +279,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.1';
+const APP_VERSION = 'v4.2';
 const CONFIG = {
   COUNTDOWN: 5,          // 카운트다운 초 (1장, 그리고 4컷/9컷의 첫 컷)
   CUT_COUNTDOWN: 3,      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초
@@ -306,10 +316,10 @@ const SHEET = { W: 1200, H: 1800, SCALE: 2 };
 const CUT = { W: 708, H: 944 };  // 컷 하나를 찍는 해상도 (3:4)
 const CUTS_JSON = 'cuts/cuts.json';
 const LAYOUTS = {
-  9: { n: 9, design: 'assets/sheet-9cut.png',
+  9: { n: 9, design: 'sheet9',
        cells: [0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ i: r * 3 + c, x: 45 + c * 378, y: 45 + r * 496, w: 354, h: 472 }))),
        footers: [{ x: 45, y: 1533, w: 1110, h: 222 }] },
-  4: { n: 4, design: 'assets/sheet-4cut.png',
+  4: { n: 4, design: 'sheet4',
        cells: [0, 1].flatMap(s => [0, 1, 2, 3].map(i => ({ i, x: s * 600 + 162, y: 40 + i * 388, w: 276, h: 368 }))),
        footers: [0, 1].map(s => ({ x: s * 600 + 30, y: 1592, w: 540, h: 168 })) },
 };
@@ -673,7 +683,7 @@ function chooseMode(mode) {
   if (mode === 'single') { session = null; show('frame'); return; }
   const n = LAYOUTS[mode].n;
   session = { mode, n, picks: [], shots: [], idx: 0, retakeLeft: CONFIG.MAX_RETAKE, retakeIdx: null };
-  $('pickTitle').innerHTML = `CHOOSE <span>${n} FRAMES</span>`;
+  $('pickTitle').innerHTML = UI.titlePick ? `<img class="titleImg" alt="CHOOSE ${n} FRAMES" src="${UI.titlePick}">` : `CHOOSE <span>${n} FRAMES</span>`;
   $('pickSub').textContent = `${n}개를 골라주세요 · 같은 프레임 여러 번 OK · 위 칸을 누르면 빠져요`;
   renderPick();
   show('pick');
@@ -793,7 +803,8 @@ async function onCutShot(out) {
 
 const sheetDesigns = {};
 function loadSheetDesign(mode) {
-  if (!(mode in sheetDesigns)) sheetDesigns[mode] = loadImg(LAYOUTS[mode].design).catch(() => null);
+  const src = UI[LAYOUTS[mode].design];
+  if (!(mode in sheetDesigns)) sheetDesigns[mode] = src ? loadImg(src).catch(() => null) : Promise.resolve(null);
   return sheetDesigns[mode];
 }
 
@@ -867,7 +878,8 @@ async function shoot() {
   const count = session && session.idx > 0 && session.retakeIdx == null ? CONFIG.CUT_COUNTDOWN : CONFIG.COUNTDOWN;
   for (let n = count; n >= 1; n--) {
     if (!screens.shoot.classList.contains('active')) { busy = false; return; }
-    cd.textContent = n; cd.classList.remove('tick'); void cd.offsetWidth; cd.classList.add('tick');
+    if (UI['count' + n]) cd.innerHTML = `<img alt="${n}" src="${UI['count' + n]}">`; else cd.textContent = n;
+    cd.classList.remove('tick'); void cd.offsetWidth; cd.classList.add('tick');
     await wait(1000);
   }
   cd.textContent = '';
@@ -907,9 +919,50 @@ function retake() {
   show('shoot');
 }
 
+/* ================= 디자인 이미지 (디자인/ 폴더 → assets/ui/manifest.json) ================= */
+let UI = {};
+async function loadUI() {
+  try {
+    const r = await fetch('assets/ui/manifest.json', { cache: 'no-cache' });
+    return r.ok ? await r.json() : {};
+  } catch (e) { return {}; }
+}
+
+function applyUI() {
+  const skin = (el, key) => { if (UI[key] && el) { el.classList.add('skin'); el.style.backgroundImage = `url("${UI[key]}")`; } };
+  skin($('shutterBtn'), 'shutter');
+  skin($('saveBtn'), 'save');
+  skin($('retakeBtn'), 'retake');
+  skin($('pickGo'), 'pickGo');
+  skin($('pickRandom'), 'pickRandom');
+  skin($('pickClear'), 'pickClear');
+  document.querySelectorAll('[data-home]').forEach(b => skin(b, 'home'));
+  document.querySelectorAll('[data-back], [data-mode-back]').forEach(b => skin(b, 'back'));
+  const title = (el, key, alt) => { if (UI[key]) el.innerHTML = `<img class="titleImg" alt="${alt}" src="${UI[key]}">`; };
+  title($('modeTitle'), 'titleMode', 'HOW MANY CUTS?');
+  title($('frameTitle'), 'titleFrame', 'CHOOSE FRAME');
+  if (UI.bgMenu) for (const id of ['modeScreen', 'pickScreen', 'frameScreen']) {
+    $(id).classList.add('skinBg'); $(id).style.backgroundImage = `url("${UI.bgMenu}")`;
+  }
+  // 모드 카드 그림
+  document.querySelectorAll('.modeCard').forEach(b => {
+    const m = b.dataset.mode, src = UI[m === 'single' ? 'modeSingle' : 'mode' + m];
+    if (src) loadImg(src).then(img => { img.className = 'art'; img.alt = ''; b.querySelector('.art').replaceWith(img); }).catch(() => {});
+  });
+  // 글꼴: 화면 글자 전체에 적용
+  if (UI.font && window.FontFace) {
+    new FontFace('BoothFont', `url("${UI.font}")`).load().then(f => {
+      document.fonts.add(f);
+      document.body.style.fontFamily = `BoothFont, -apple-system, "Apple SD Gothic Neo", sans-serif`;
+      document.querySelectorAll('button').forEach(b => { b.style.fontFamily = 'inherit'; });
+    }).catch(e => console.warn('글꼴을 불러오지 못했습니다', e));
+  }
+}
+
 /* ================= 초기화 ================= */
 (async function init() {
-  const startImg = await loadImg(IMG_START);
+  UI = await loadUI();
+  const startImg = await loadImg(UI.start || IMG_START);
   screens.start.querySelector('.stage').style.setProperty('--ar', startImg.naturalWidth / startImg.naturalHeight);
   $('startImg').src = startImg.src;
   [FRAMES, CUTS] = await Promise.all([loadFrames(), loadCuts()]);
@@ -917,12 +970,8 @@ function retake() {
   buildCutList();
   $('resultImg').src = '';
   $('version').textContent = APP_VERSION;
-  // 모드 카드 이미지가 있으면 그림 대신 사용 (assets/mode-4cut.png, mode-9cut.png, mode-single.png)
-  document.querySelectorAll('.modeCard').forEach(b => {
-    const m = b.dataset.mode, src = `assets/mode-${m === 'single' ? 'single' : m + 'cut'}.png`;
-    loadImg(src).then(img => { img.className = 'art'; img.alt = ''; b.querySelector('.art').replaceWith(img); }).catch(() => {});
-    b.addEventListener('click', () => chooseMode(m));
-  });
+  applyUI();
+  document.querySelectorAll('.modeCard').forEach(b => b.addEventListener('click', () => chooseMode(b.dataset.mode)));
   $('pickRandom').addEventListener('click', pickRandom);
   $('pickClear').addEventListener('click', () => { if (session) { session.picks = []; renderPick(); } });
   $('pickGo').addEventListener('click', startCutSession);

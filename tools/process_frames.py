@@ -18,9 +18,8 @@
 - 새 이미지를 cutN.png로 바꾸고 3:4(708x944)로 맞춤. 비율이 다르면 초록/투명 구멍이 가운데 오도록 잘라냄
 - 썸네일 cuts/thumbs/cutN.jpg, 목록 cuts/cuts.json
 
-디자인 이미지: 디자인/ 아래 용도별 폴더에 아무 이름으로 한 장 올리면 크기를 맞춰 assets/로 복사
-- 디자인/9컷_시트배경 → assets/sheet-9cut.png (2400x3600)   디자인/4컷_시트배경 → assets/sheet-4cut.png
-- 디자인/모드카드_4컷·9컷·1장 → assets/mode-4cut.png, mode-9cut.png, mode-single.png (600x900)
+디자인 이미지: 디자인/ 아래 용도별 폴더(DESIGN_TARGETS)에 아무 이름으로 한 장 올리면 크기를 맞춰 assets/로 복사하고
+assets/ui/manifest.json에 목록을 씀. 앱은 이 목록에 있는 것만 바꿔 씀(없으면 기본 모양)
 
 사용: python3 tools/process_frames.py   (저장소 루트에서 실행, Pillow 필요)
 """
@@ -145,37 +144,100 @@ def process_cuts():
 
 
 DESIGN = ROOT / '디자인'
-DESIGN_TARGETS = {  # 폴더 이름: (만들 파일, 크기)
-    '9컷_시트배경': ('assets/sheet-9cut.png', (2400, 3600)),
-    '4컷_시트배경': ('assets/sheet-4cut.png', (2400, 3600)),
-    '모드카드_4컷': ('assets/mode-4cut.png', (600, 900)),
-    '모드카드_9컷': ('assets/mode-9cut.png', (600, 900)),
-    '모드카드_1장': ('assets/mode-single.png', (600, 900)),
+UI_MANIFEST = ROOT / 'assets' / 'ui' / 'manifest.json'
+FONT_EXTS = {'.ttf', '.otf', '.woff', '.woff2'}
+# 폴더 이름: (앱에서 쓰는 이름, 만들 파일, 크기, 맞추는 방식)
+#   cover  = 비율 맞춰 가운데 기준으로 잘라 정확히 그 크기
+#   inside = 비율 그대로, 그 크기 안에 들어가게만 줄임 (버튼·글자 이미지)
+#   font   = 글꼴 파일 그대로 복사
+#   start  = 시작 화면: 비율 그대로 긴 변 2400 이하, 폴더가 비어도 기존 파일 유지
+DESIGN_TARGETS = {
+    '시작화면':           ('start',      'assets/start.jpg',          (2400, 2400), 'start'),
+    '모드카드_4컷':        ('mode4',      'assets/mode-4cut.png',      (600, 900),   'cover'),
+    '모드카드_9컷':        ('mode9',      'assets/mode-9cut.png',      (600, 900),   'cover'),
+    '모드카드_1장':        ('modeSingle', 'assets/mode-single.png',    (600, 900),   'cover'),
+    '9컷_시트배경':        ('sheet9',     'assets/sheet-9cut.png',     (2400, 3600), 'cover'),
+    '4컷_시트배경':        ('sheet4',     'assets/sheet-4cut.png',     (2400, 3600), 'cover'),
+    '배경_메뉴화면':       ('bgMenu',     'assets/ui/bg-menu.jpg',     (1640, 2360), 'cover'),
+    '제목_모드선택':       ('titleMode',  'assets/ui/title-mode.png',  (1200, 240),  'inside'),
+    '제목_컷프레임고르기':  ('titlePick',  'assets/ui/title-pick.png',  (1200, 240),  'inside'),
+    '제목_1장프레임고르기': ('titleFrame', 'assets/ui/title-frame.png', (1200, 240),  'inside'),
+    '버튼_셔터':          ('shutter',    'assets/ui/shutter.png',     (240, 240),   'inside'),
+    '버튼_처음으로':       ('home',       'assets/ui/home.png',        (120, 120),   'inside'),
+    '버튼_뒤로':          ('back',       'assets/ui/back.png',        (120, 120),   'inside'),
+    '버튼_촬영시작':       ('pickGo',     'assets/ui/btn-start.png',   (480, 160),   'inside'),
+    '버튼_랜덤채우기':     ('pickRandom', 'assets/ui/btn-random.png',  (480, 160),   'inside'),
+    '버튼_비우기':         ('pickClear',  'assets/ui/btn-clear.png',   (480, 160),   'inside'),
+    '버튼_SAVE':          ('save',       'assets/ui/btn-save.png',    (480, 160),   'inside'),
+    '버튼_RETAKE':        ('retake',     'assets/ui/btn-retake.png',  (480, 160),   'inside'),
+    '카운트다운_5':        ('count5',     'assets/ui/count-5.png',     (600, 600),   'inside'),
+    '카운트다운_4':        ('count4',     'assets/ui/count-4.png',     (600, 600),   'inside'),
+    '카운트다운_3':        ('count3',     'assets/ui/count-3.png',     (600, 600),   'inside'),
+    '카운트다운_2':        ('count2',     'assets/ui/count-2.png',     (600, 600),   'inside'),
+    '카운트다운_1':        ('count1',     'assets/ui/count-1.png',     (600, 600),   'inside'),
+    '글꼴':               ('font',       'assets/ui/font',            None,         'font'),
 }
 
 
 def process_design():
-    """디자인/용도 폴더의 이미지를 크기 맞춰 assets/로. 폴더가 비면 assets 파일도 지움."""
-    for folder, (target, size) in DESIGN_TARGETS.items():
-        d, out = DESIGN / folder, ROOT / target
-        imgs = sorted((p for p in d.iterdir() if p.is_file() and p.suffix.lower() in EXTS), key=natural_key) if d.exists() else []
-        if not imgs:
-            if out.exists():
-                out.unlink()
-                print(f'디자인: {folder} 비어 있음 → {target} 삭제')
-            continue
-        if len(imgs) > 1:
-            print(f'디자인: {folder}에 이미지가 {len(imgs)}개 → 이름순 마지막 {imgs[-1].name} 사용')
-        im = Image.open(imgs[-1])
-        im.load()
-        im = cover_crop(im.convert('RGBA'), size)
-        if not has_real_alpha(im):
-            im = im.convert('RGB')
-        old = out.read_bytes() if out.exists() else None
-        out.parent.mkdir(exist_ok=True)
-        im.save(out, optimize=True)
-        if out.read_bytes() != old:
-            print(f'디자인: {folder}/{imgs[-1].name} → {target} {size}')
+    """디자인/<용도> 폴더의 파일을 크기 맞춰 assets/로 복사하고 assets/ui/manifest.json에 목록을 씀.
+    폴더가 비면 만든 파일도 지움(= 앱 기본 모양)."""
+    import hashlib
+    manifest = {}
+    for folder, (key, target, size, mode) in DESIGN_TARGETS.items():
+        d = DESIGN / folder
+        exts = FONT_EXTS if mode == 'font' else EXTS
+        files = sorted((p for p in d.iterdir() if p.is_file() and p.suffix.lower() in exts), key=natural_key) if d.exists() else []
+        if mode == 'font':
+            olds = [p for p in (ROOT / 'assets' / 'ui').glob('font.*')] if (ROOT / 'assets' / 'ui').exists() else []
+            if not files:
+                for o in olds:
+                    o.unlink(); print(f'디자인: {folder} 비어 있음 → {o.name} 삭제')
+                continue
+            src = files[-1]
+            out = ROOT / (target + src.suffix.lower())
+            for o in olds:
+                if o != out:
+                    o.unlink()
+            out.parent.mkdir(parents=True, exist_ok=True)
+            if not out.exists() or out.read_bytes() != src.read_bytes():
+                out.write_bytes(src.read_bytes()); print(f'디자인: {folder}/{src.name} → {out.relative_to(ROOT)}')
+        else:
+            out = ROOT / target
+            if not files:
+                if out.exists() and mode != 'start':
+                    out.unlink(); print(f'디자인: {folder} 비어 있음 → {target} 삭제')
+                if not out.exists():
+                    continue
+            else:
+                if len(files) > 1:
+                    print(f'디자인: {folder}에 이미지가 {len(files)}개 → 이름순 마지막 {files[-1].name} 사용')
+                im = Image.open(files[-1]); im.load(); im = im.convert('RGBA')
+                if mode == 'cover':
+                    im = cover_crop(im, size)
+                else:  # inside / start: 비율 유지, 크기 안으로만 줄임
+                    im.thumbnail(size, Image.LANCZOS)
+                if out.suffix == '.jpg' or not has_real_alpha(im):
+                    flat = Image.new('RGB', im.size, (0, 0, 0)) if out.suffix == '.jpg' else None
+                    if flat:
+                        flat.paste(im, mask=im.getchannel('A')); im = flat
+                    else:
+                        im = im.convert('RGB')
+                old = out.read_bytes() if out.exists() else None
+                out.parent.mkdir(parents=True, exist_ok=True)
+                if out.suffix == '.jpg':
+                    im.save(out, quality=90, optimize=True)
+                else:
+                    im.save(out, optimize=True)
+                if out.read_bytes() != old:
+                    print(f'디자인: {folder}/{files[-1].name} → {target} {im.size}')
+        # 같은 이름으로 바꿔 올려도 아이패드가 예전 그림을 안 쓰도록 내용 해시를 붙임
+        h = hashlib.md5(out.read_bytes()).hexdigest()[:8]
+        manifest[key] = f'{out.relative_to(ROOT).as_posix()}?v={h}'
+    UI_MANIFEST.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(manifest, ensure_ascii=False, indent=1) + '\n'
+    if not UI_MANIFEST.exists() or UI_MANIFEST.read_text(encoding='utf-8') != text:
+        UI_MANIFEST.write_text(text, encoding='utf-8'); print('디자인 목록:', ', '.join(manifest) or '(없음)')
 
 
 def find(folder, stem):

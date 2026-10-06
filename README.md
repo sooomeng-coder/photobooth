@@ -16,6 +16,8 @@
 | 모드 카드 **9컷** 그림 (1장) | [디자인/모드카드_9컷](https://github.com/sooomeng-coder/photobooth/upload/main/디자인/모드카드_9컷) | 600×900 (2:3) |
 | 모드 카드 **1장** 그림 (1장) | [디자인/모드카드_1장](https://github.com/sooomeng-coder/photobooth/upload/main/디자인/모드카드_1장) | 600×900 (2:3) |
 
+| **버튼·제목·배경·카운트다운·글꼴·시작화면** | [디자인 폴더](https://github.com/sooomeng-coder/photobooth/tree/main/디자인) 안의 요소별 폴더 | 폴더마다 안내 |
+
 - 올리는 화면 아래 **Commit changes** 누를 때 `main`에 바로 올리기(Commit directly to the main branch) 선택
 - 처리 결과: [Actions 탭](https://github.com/sooomeng-coder/photobooth/actions)
 - 그리기 가이드(칸 위치 등): [templates/](templates/)

@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.1) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.2) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -106,10 +106,13 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 
 ### 업로드 폴더 (사용자가 GitHub 웹에서 올리는 곳) — 저장소 첫 화면 `README.md`에 표로 정리
 - `cuts/` 컷 프레임, `frames/` 1장 프레임, `디자인/<용도>/` 디자인 이미지(용도별 폴더에 한 장)
-  - `디자인/9컷_시트배경`·`4컷_시트배경` → `assets/sheet-9cut.png`·`sheet-4cut.png` (2400×3600)
-  - `디자인/모드카드_4컷`·`_9컷`·`_1장` → `assets/mode-4cut.png`·`mode-9cut.png`·`mode-single.png` (600×900)
-  - `process_design()`이 이름순 마지막 이미지를 cover로 잘라 크기 맞춤. 폴더가 비면 assets 파일 삭제(=기본 모양)
-  - `assets/sheet-*`, `assets/mode-*`는 자동 생성물 → 직접 올리지 말고 `디자인/`에
+  - 요소별 폴더 목록·크기·맞추는 방식은 `tools/process_frames.py`의 `DESIGN_TARGETS` (폴더 → manifest 키 → 파일)
+  - 시작화면, 모드카드 3, 시트배경 2, 배경_메뉴화면, 제목 3, 버튼 8(셔터·처음으로·뒤로·촬영시작·랜덤채우기·비우기·SAVE·RETAKE), 카운트다운 5~1, 글꼴
+  - `process_design()`: 이름순 마지막 파일을 cover(정확히 자름)/inside(비율 유지 축소)로 맞춰 `assets/`(`assets/ui/`)에 저장,
+    `assets/ui/manifest.json`에 `키: 경로?v=해시` 기록. 폴더가 비면 파일 삭제(=기본 모양). 시작화면은 비워도 유지
+  - 앱: `loadUI()` → `UI`, `applyUI()`가 manifest에 있는 요소만 교체(`.skin` = 배경 이미지 버튼, 글자 숨김).
+    카운트다운은 `UI.count5..1`, 시트 배경은 `UI.sheet9/4`, 글꼴은 FontFace('BoothFont')
+  - `assets/` 아래 디자인 파일은 자동 생성물 → 직접 올리지 말고 `디자인/`에
 - 폴더마다 `README.md`(올리기 링크·크기 안내)가 있어서 빈 폴더도 유지됨
 
 ### 4×6 인화 시트 (4컷 / 9컷)
