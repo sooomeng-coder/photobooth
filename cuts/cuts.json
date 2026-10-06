@@ -1,0 +1,11 @@
+[
+  {"name": "임시 1", "src": "cuts/cut1.png", "thumb": "cuts/thumbs/cut1.jpg"},
+  {"name": "임시 2", "src": "cuts/cut2.png", "thumb": "cuts/thumbs/cut2.jpg"},
+  {"name": "임시 3", "src": "cuts/cut3.png", "thumb": "cuts/thumbs/cut3.jpg"},
+  {"name": "임시 4", "src": "cuts/cut4.png", "thumb": "cuts/thumbs/cut4.jpg"},
+  {"name": "임시 5", "src": "cuts/cut5.png", "thumb": "cuts/thumbs/cut5.jpg"},
+  {"name": "임시 6", "src": "cuts/cut6.png", "thumb": "cuts/thumbs/cut6.jpg"},
+  {"name": "임시 7", "src": "cuts/cut7.png", "thumb": "cuts/thumbs/cut7.jpg"},
+  {"name": "임시 8", "src": "cuts/cut8.png", "thumb": "cuts/thumbs/cut8.jpg"},
+  {"name": "임시 9", "src": "cuts/cut9.png", "thumb": "cuts/thumbs/cut9.jpg"}
+]

@@ -4,7 +4,7 @@ name: process frames
 on:
   push:
     branches: [main]
-    paths: ['frames/**', 'tools/process_frames.py']
+    paths: ['frames/**', 'cuts/**', 'tools/process_frames.py']
   workflow_dispatch:
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
       - name: commit
         id: commit
         run: |
-          git add -A frames
+          git add -A frames cuts
           if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

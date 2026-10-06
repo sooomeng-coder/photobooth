@@ -14,6 +14,10 @@
 - frame.png     맨 위에 덮는 고정 프레임 (초록/투명 구멍 규칙 동일)
 - 스티커 PNG    파일 이름 = 붙는 위치 (STICKERS 참고). 얼굴을 따라 움직임
 
+컷 프레임 (4컷/9컷 시트용): cuts/ 폴더
+- 새 이미지를 cutN.png로 바꾸고 3:4(708x944)로 맞춤. 비율이 다르면 초록/투명 구멍이 가운데 오도록 잘라냄
+- 썸네일 cuts/thumbs/cutN.jpg, 목록 cuts/cuts.json
+
 사용: python3 tools/process_frames.py   (저장소 루트에서 실행, Pillow 필요)
 """
 import json
@@ -26,6 +30,9 @@ ROOT = Path(__file__).resolve().parent.parent
 FRAMES = ROOT / 'frames'
 THUMBS = FRAMES / 'thumbs'
 LIST = FRAMES / 'frames.json'
+CUTS = ROOT / 'cuts'
+CUT_LIST = CUTS / 'cuts.json'
+CUT_SIZE = (708, 944)  # 반명함판 3x4cm @600dpi
 MAX_SIDE = 2400
 THUMB_SIZE = 600
 EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
@@ -60,6 +67,73 @@ def make_thumb(im, dest):
     bg.thumbnail((THUMB_SIZE, THUMB_SIZE))
     dest.parent.mkdir(exist_ok=True)
     bg.save(dest, quality=82, optimize=True)
+
+
+def hole_center(im):
+    """초록/투명 구멍의 무게중심 (0~1). 구멍이 없으면 가운데."""
+    t = im.convert('RGBA').copy()
+    t.thumbnail((300, 300))
+    px = t.load()
+    sx = sy = n = 0
+    for y in range(t.height):
+        for x in range(t.width):
+            r, g, b, a = px[x, y]
+            if a < 128 or g - max(r, b) >= 110:
+                sx += x; sy += y; n += 1
+    return (sx / n / t.width, sy / n / t.height) if n else (.5, .5)
+
+
+def fit_cut(im):
+    """3:4로 꽉 차게 자르고(구멍이 가운데 오도록) CUT_SIZE로 맞춤."""
+    W, H = CUT_SIZE
+    s = max(W / im.width, H / im.height)
+    im = im.resize((max(W, round(im.width * s)), max(H, round(im.height * s))), Image.LANCZOS)
+    cx, cy = hole_center(im)
+    x = min(max(round(cx * im.width - W / 2), 0), im.width - W)
+    y = min(max(round(cy * im.height - H / 2), 0), im.height - H)
+    return im.crop((x, y, x + W, y + H))
+
+
+def write_list(path, items):
+    path.write_text('[\n' + ',\n'.join('  ' + json.dumps(f, ensure_ascii=False) for f in items) + '\n]\n',
+                    encoding='utf-8')
+
+
+def process_cuts():
+    if not CUTS.exists():
+        return
+    cuts = json.loads(CUT_LIST.read_text(encoding='utf-8')) if CUT_LIST.exists() else []
+    known = {f.get('src') for f in cuts}
+    used = {int(m.group(1)) for f in cuts if (m := re.search(r'cut(\d+)\.png$', f.get('src', '')))}
+    used |= {int(m.group(1)) for p in CUTS.glob('cut*.png') if (m := re.fullmatch(r'cut(\d+)\.png', p.name))}
+    no = max(used, default=0) + 1
+    changed = False
+    for p in sorted((p for p in CUTS.iterdir() if p.is_file() and p.suffix.lower() in EXTS
+                     and f'cuts/{p.name}' not in known), key=natural_key):
+        im = Image.open(p)
+        im.load()
+        im = fit_cut(im.convert('RGBA'))
+        alpha = has_real_alpha(im)
+        if not alpha:
+            im = im.convert('RGB')
+        dest = CUTS / f'cut{no}.png'
+        im.save(dest, optimize=True)
+        make_thumb(im, CUTS / 'thumbs' / f'cut{no}.jpg')
+        stem = p.stem.strip()
+        label = f'CUT {no}' if GENERIC.match(stem) or GENERIC_PARTS.search(stem) else stem
+        cuts.append({'name': label, 'src': f'cuts/cut{no}.png', 'thumb': f'cuts/thumbs/cut{no}.jpg'})
+        if p != dest:
+            p.unlink()
+        print(f'컷 프레임: {p.name} -> {dest.name} "{label}"')
+        no += 1
+        changed = True
+    for f in cuts:
+        t = ROOT / f.get('thumb', '')
+        if f.get('thumb') and not t.exists() and (ROOT / f['src']).exists():
+            make_thumb(Image.open(ROOT / f['src']), t)
+            changed = True
+    if changed:
+        write_list(CUT_LIST, cuts)
 
 
 def find(folder, stem):
@@ -198,10 +272,10 @@ def main():
             changed = True
 
     if changed:
-        LIST.write_text('[\n' + ',\n'.join('  ' + json.dumps(f, ensure_ascii=False) for f in frames) + '\n]\n',
-                        encoding='utf-8')
+        write_list(LIST, frames)
     else:
         print('새 프레임 없음')
+    process_cuts()
 
 
 if __name__ == '__main__':

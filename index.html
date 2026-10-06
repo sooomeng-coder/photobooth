@@ -15,8 +15,8 @@
   .screen.active { display: flex; }
 
   /* 프레임 비율을 유지하면서 화면에 최대한 꽉 차는 무대 */
-  .stage { --ar: 1.45; position: relative; width: min(100vw, calc(100vh * var(--ar)));
-    height: min(100vh, calc(100vw / var(--ar))); }
+  .stage { --ar: 1.45; position: relative; width: min(100vw, calc(var(--avail-h, 100vh) * var(--ar)));
+    height: min(var(--avail-h, 100vh), calc(100vw / var(--ar))); }
   .stage > img, .stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
   /* 시작 화면 */
@@ -84,6 +84,84 @@
     width: 2em; height: 2em; border-radius: 50%; display: flex; align-items: center; justify-content: center;
     font-size: clamp(13px, 2vmin, 20px); box-shadow: 0 2px 8px rgba(0,0,0,.4); }
 
+  /* 모드 선택 / 컷 고르기 화면 공통 */
+  .menu { flex-direction: column; justify-content: flex-start; gap: 3vmin; padding: 5vmin 4vmin 0;
+    background: radial-gradient(circle at 50% 0%, #1f2a1f, #0d0d0d 70%); color: #fff; }
+  .menu h1 { font-size: clamp(26px, 5vmin, 56px); font-weight: 900; letter-spacing: .12em; text-align: center; }
+  .menu h1 span { color: #00e83a; }
+  .menu p.sub { color: rgba(255,255,255,.6); font-size: clamp(14px, 2.2vmin, 22px); margin-top: -1.5vmin; text-align: center; }
+  .version { position: absolute; right: 14px; bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    color: rgba(255,255,255,.25); font-size: 12px; letter-spacing: .05em; }
+
+  #modeScreen { justify-content: center; }
+  #modeList { display: flex; flex-wrap: wrap; gap: 4vmin; justify-content: center; }
+  .modeCard { width: clamp(200px, 27vmin, 320px); border: 4px solid transparent; border-radius: 22px; background: #1b1b1b;
+    color: #fff; padding: 3vmin 2vmin 2.5vmin; cursor: pointer; display: flex; flex-direction: column; align-items: center;
+    gap: 2vmin; box-shadow: 0 8px 28px rgba(0,0,0,.5); transition: transform .12s, border-color .12s; font: inherit; }
+  .modeCard:hover { border-color: #00e83a; }
+  .modeCard:active { transform: scale(.96); }
+  .modeCard .art { width: 62%; aspect-ratio: 2 / 3; background: #fff; border-radius: 6px; padding: 6%;
+    display: grid; gap: 5%; }
+  .modeCard .art i { background: #00e83a; border-radius: 3px; }
+  .modeCard .art.cut9 { grid-template: repeat(3, 1fr) .55fr / repeat(3, 1fr); }
+  .modeCard .art.cut9 i:last-child { grid-column: 1 / -1; background: #e9e4d2; }
+  .modeCard .art.cut4 { grid-template: repeat(4, 1fr) .5fr / 1fr 1fr; grid-auto-flow: column; padding: 6% 14%; column-gap: 22%; }
+  .modeCard .art.cut4 i.foot { background: #e9e4d2; }
+  .modeCard .art.single { grid-template: 1fr / 1fr; }
+  .modeCard img.art { padding: 0; background: none; object-fit: contain; }
+  .modeCard b { font-size: clamp(22px, 4vmin, 40px); font-weight: 900; letter-spacing: .08em; }
+  .modeCard small { color: rgba(255,255,255,.6); font-size: clamp(13px, 1.9vmin, 18px); text-align: center; line-height: 1.4; }
+
+  #slotRow { display: flex; gap: 1.2vmin; justify-content: center; flex-wrap: wrap; }
+  .slot { position: relative; width: clamp(44px, 7.5vmin, 84px); aspect-ratio: 3 / 4; border-radius: 8px; border: 2px dashed rgba(255,255,255,.3);
+    background: #151515 center / cover no-repeat; color: rgba(255,255,255,.45); font-weight: 900; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; font-size: clamp(14px, 2.2vmin, 22px); }
+  .slot.filled { border: 2px solid #00e83a; color: transparent; }
+  .slot.filled::after { content: '×'; position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; border-radius: 50%;
+    background: #fff; color: #111; font-size: 16px; line-height: 22px; text-align: center; }
+  .slot.next { border-color: #00e83a; color: #00e83a; }
+  #cutList { display: flex; flex-wrap: wrap; gap: 2.5vmin; justify-content: center; align-content: flex-start;
+    flex: 1 1 auto; min-height: 0; width: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 1vmin; }
+  .frameCard.cutCard { width: clamp(120px, 17vmin, 200px); }
+  .frameCard.cutCard img { aspect-ratio: 3 / 4; }
+  .frameCard .count { position: absolute; top: 10px; right: 10px; background: #fff; color: #111; font-weight: 900;
+    min-width: 1.8em; height: 1.8em; border-radius: 999px; display: flex; align-items: center; justify-content: center;
+    font-size: clamp(12px, 1.8vmin, 18px); padding: 0 .4em; }
+  #pickBar { display: flex; gap: 2vmin; justify-content: center; flex-wrap: wrap; width: 100%;
+    padding: 2vmin 0 calc(3vmin + env(safe-area-inset-bottom, 0px)); }
+  .btn.ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); font-size: clamp(15px, 2.6vmin, 26px); }
+  #pickGo { font-size: clamp(16px, 2.8vmin, 28px); }
+
+  /* 컷 촬영: 아래에 진행 상황 + 다음 프레임들 */
+  #cutBar { display: none; }
+  #shootScreen.cutMode { flex-direction: column; gap: 12px; }
+  #shootScreen.cutMode .stage { --avail-h: calc(100vh - 190px - env(safe-area-inset-bottom, 0px)); }
+  #shootScreen.cutMode #cutBar { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #fff; }
+  #cutCount { font-size: clamp(16px, 2.6vmin, 24px); font-weight: 800; letter-spacing: .04em; }
+  #cutCount b { color: #00e83a; font-size: 1.3em; }
+  #cutThumbs { display: flex; gap: 8px; }
+  #cutThumbs div { position: relative; width: clamp(46px, 8vmin, 80px); aspect-ratio: 3 / 4; border-radius: 6px; background: #222 center / cover no-repeat;
+    border: 3px solid transparent; opacity: .55; }
+  #cutThumbs div.done { opacity: 1; }
+  #cutThumbs div.done::after { content: '✓'; position: absolute; right: -6px; top: -8px; width: 20px; height: 20px; border-radius: 50%;
+    background: #00e83a; color: #fff; font-size: 13px; line-height: 20px; text-align: center; font-weight: 900; }
+  #cutThumbs div.current { opacity: 1; border-color: #00e83a; transform: scale(1.12); box-shadow: 0 0 18px rgba(0,232,58,.5); }
+  #cutThumbs span { position: absolute; left: 4px; bottom: 2px; color: #fff; font-size: 12px; font-weight: 900; text-shadow: 0 1px 3px #000; }
+
+  /* 시트 결과: 버튼은 시트 아래, 컷을 눌러 다시 찍기 */
+  #resultScreen.sheetMode { flex-direction: column; justify-content: flex-start; padding-top: 16px; }
+  #resultScreen.sheetMode .home { top: calc(100% + 18px); left: 0; }
+  #resultScreen.sheetMode .stage { --avail-h: calc(100vh - 150px - env(safe-area-inset-bottom, 0px)); }
+  #resultScreen.sheetMode .btnRow { top: calc(100% + 14px); bottom: auto; align-items: center; }
+  #resultScreen.sheetMode #retakeBtn { display: none; }
+  #sheetHint { display: none; color: rgba(255,255,255,.75); font-size: clamp(13px, 2vmin, 18px); max-width: 16em; line-height: 1.35; }
+  #resultScreen.sheetMode #sheetHint { display: block; }
+  #retakeLayer { position: absolute; inset: 0; display: none; }
+  #resultScreen.sheetMode #retakeLayer { display: block; }
+  #retakeLayer button { position: absolute; border: 0; background: transparent; cursor: pointer; border-radius: 4px; }
+  #retakeLayer button:hover, #retakeLayer button:focus-visible { outline: 3px solid #00e83a; background: rgba(0,232,58,.15); }
+  #retakeLayer.used button { display: none; }
+
   .msg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center;
     color: #fff; background: rgba(0,0,0,.65); font-size: clamp(16px, 2.6vmin, 26px); line-height: 1.6; padding: 24px; }
   .hidden { display: none !important; }
@@ -99,12 +177,48 @@
   </div>
 </section>
 
-<!-- 2. 프레임 선택 화면 -->
+<!-- 1-1. 모드 선택: 4컷 / 9컷 / 1장 -->
+<section id="modeScreen" class="screen menu">
+  <h1>HOW MANY <span>CUTS?</span></h1>
+  <p class="sub">원하는 사진 구성을 골라주세요</p>
+  <div id="modeList">
+    <button class="modeCard" data-mode="4">
+      <div class="art cut4"><i></i><i></i><i></i><i></i><i class="foot"></i><i></i><i></i><i></i><i></i><i class="foot"></i></div>
+      <b>4컷</b><small>세로 4컷 띠 2줄<br>둘이 나눠 가져요</small>
+    </button>
+    <button class="modeCard" data-mode="9">
+      <div class="art cut9"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <b>9컷</b><small>반명함 크기 9장</small>
+    </button>
+    <button class="modeCard" data-mode="single">
+      <div class="art single"><i></i></div>
+      <b>1장</b><small>큰 프레임 한 장</small>
+    </button>
+  </div>
+  <button class="home" data-home aria-label="처음으로">⌂</button>
+  <span class="version" id="version"></span>
+</section>
+
+<!-- 1-2. 컷 프레임 고르기 (4컷/9컷) -->
+<section id="pickScreen" class="screen menu">
+  <h1 id="pickTitle">CHOOSE <span>FRAMES</span></h1>
+  <p class="sub" id="pickSub"></p>
+  <div id="slotRow"></div>
+  <div id="cutList"></div>
+  <div id="pickBar">
+    <button class="btn ghost" id="pickRandom">랜덤 채우기</button>
+    <button class="btn ghost" id="pickClear">비우기</button>
+    <button class="btn save" id="pickGo" disabled>촬영 시작</button>
+  </div>
+  <button class="home" data-mode-back aria-label="모드 다시 고르기">←</button>
+</section>
+
+<!-- 2. 프레임 선택 화면 (1장 모드) -->
 <section id="frameScreen" class="screen">
   <h1>CHOOSE <span>FRAME</span></h1>
   <p>마음에 드는 프레임을 눌러주세요</p>
   <div id="frameList"></div>
-  <button class="home" data-home aria-label="처음으로">⌂</button>
+  <button class="home" data-mode-back aria-label="모드 다시 고르기">←</button>
 </section>
 
 <!-- 3. 촬영 화면 -->
@@ -116,15 +230,21 @@
     <button class="home" data-back aria-label="프레임 다시 고르기">←</button>
     <div id="camMsg" class="msg hidden"></div>
   </div>
+  <div id="cutBar">
+    <div id="cutCount"></div>
+    <div id="cutThumbs"></div>
+  </div>
 </section>
 
 <!-- 4. 결과 화면 -->
 <section id="resultScreen" class="screen">
   <div class="stage">
     <img id="resultImg" alt="result">
+    <div id="retakeLayer"></div>
     <div class="btnRow">
       <button id="saveBtn" class="btn save">SAVE</button>
       <button id="retakeBtn" class="btn retake">RETAKE</button>
+      <span id="sheetHint"></span>
     </div>
     <button class="home" data-home aria-label="처음으로">⌂</button>
   </div>
@@ -135,8 +255,10 @@
 
 <script>
 /* ================= 설정 ================= */
+const APP_VERSION = 'v4.0';
 const CONFIG = {
-  COUNTDOWN: 5,          // 카운트다운 초
+  COUNTDOWN: 5,          // 카운트다운 초 (1장, 그리고 4컷/9컷의 첫 컷)
+  CUT_COUNTDOWN: 3,      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초
   MAX_RETAKE: 1,         // 다시 찍기 허용 횟수
   FILE_PREFIX: 'photobooth',
 };
@@ -162,9 +284,28 @@ async function loadFrames() {
   }
 }
 
+/* ================= 4컷 / 9컷 시트 =================
+   좌표는 1x(300dpi, 4x6인치 = 1200x1800) 기준. 저장은 SHEET.SCALE배 (2 = 600dpi, 2400x3600)
+   9컷: templates/sheet_4x6_9cut.json 과 같은 값 (컷 = 반명함 3x4cm)
+   4컷: 세로로 반 자르면 2x6인치 띠 2개, 띠마다 같은 4컷 (컷 비율 3:4 동일, 크기만 작음) */
+const SHEET = { W: 1200, H: 1800, SCALE: 2 };
+const CUT = { W: 708, H: 944 };  // 컷 하나를 찍는 해상도 (3:4)
+const CUTS_JSON = 'cuts/cuts.json';
+const LAYOUTS = {
+  9: { n: 9, design: 'assets/sheet-9cut.png',
+       cells: [0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ i: r * 3 + c, x: 45 + c * 378, y: 45 + r * 496, w: 354, h: 472 }))),
+       footers: [{ x: 45, y: 1533, w: 1110, h: 222 }] },
+  4: { n: 4, design: 'assets/sheet-4cut.png',
+       cells: [0, 1].flatMap(s => [0, 1, 2, 3].map(i => ({ i, x: s * 600 + 162, y: 40 + i * 388, w: 276, h: 368 }))),
+       footers: [0, 1].map(s => ({ x: s * 600 + 30, y: 1592, w: 540, h: 168 })) },
+};
+let CUTS = [];
+let session = null;  // { mode, n, picks:[컷 프레임 번호], shots:[canvas], idx, retakeLeft, retakeIdx }
+
 /* ================= 요소 ================= */
 const $ = id => document.getElementById(id);
-const screens = { start: $('startScreen'), frame: $('frameScreen'), shoot: $('shootScreen'), result: $('resultScreen') };
+const screens = { start: $('startScreen'), mode: $('modeScreen'), pick: $('pickScreen'), frame: $('frameScreen'),
+  shoot: $('shootScreen'), result: $('resultScreen') };
 const video = $('video');
 const live = $('live');
 const lctx = live.getContext('2d');
@@ -412,7 +553,7 @@ function show(name) {
   if (name === 'shoot') { $('shutterBtn').disabled = false; $('countdown').textContent = ''; loop(); }
 }
 
-function goFrames() { show('frame'); startCamera(); } // 카메라 권한을 미리 받아둠
+function goModes() { show('mode'); startCamera(); } // 카메라 권한을 미리 받아둠
 
 const overlayCache = new Map();
 let selecting = false;
@@ -433,6 +574,7 @@ async function selectFrame(i) {
     }
   }
   cur = overlayCache.get(i);
+  session = null; setCutMode(false);
   resetVisionState();
   const ar = cur.W / cur.H;
   for (const id of ['shootScreen', 'resultScreen']) screens[id.replace('Screen', '')].querySelector('.stage').style.setProperty('--ar', ar);
@@ -492,10 +634,210 @@ function buildFrameList() {
 }
 
 function goHome() {
-  busy = false; retakesLeft = CONFIG.MAX_RETAKE; resultBlob = null;
+  busy = false; retakesLeft = CONFIG.MAX_RETAKE; resultBlob = null; session = null;
+  setCutMode(false);
   show('start');
 }
-function goBackToFrames() { busy = false; show('frame'); }
+function goBackToFrames() {
+  busy = false;
+  if (session) { session.shots = []; session.idx = 0; session.retakeIdx = null; setCutMode(false); renderPick(); show('pick'); }
+  else show('frame');
+}
+function goBackToModes() { busy = false; session = null; setCutMode(false); show('mode'); }
+
+/* ================= 4컷 / 9컷: 모드 → 프레임 고르기 → 연속 촬영 → 시트 ================= */
+async function loadCuts() {
+  try {
+    const r = await fetch(CUTS_JSON, { cache: 'no-cache' });
+    if (!r.ok) throw new Error(r.status);
+    const list = await r.json();
+    return Array.isArray(list) ? list.filter(f => f && f.src) : [];
+  } catch (e) { console.warn('cuts.json을 읽지 못했습니다.', e); return []; }
+}
+
+function chooseMode(mode) {
+  if (mode === 'single') { session = null; show('frame'); return; }
+  const n = LAYOUTS[mode].n;
+  session = { mode, n, picks: [], shots: [], idx: 0, retakeLeft: CONFIG.MAX_RETAKE, retakeIdx: null };
+  $('pickTitle').innerHTML = `CHOOSE <span>${n} FRAMES</span>`;
+  $('pickSub').textContent = `프레임 ${n}개를 골라주세요 · 같은 프레임을 여러 번 골라도 돼요 · 위 칸을 누르면 빠져요`;
+  renderPick();
+  show('pick');
+}
+
+function buildCutList() {
+  const list = $('cutList');
+  list.textContent = '';
+  if (!CUTS.length) { list.innerHTML = '<p class="sub">컷 프레임이 아직 없어요. cuts 폴더에 3:4 프레임을 올려주세요.</p>'; return; }
+  CUTS.forEach((f, i) => {
+    const b = document.createElement('button');
+    b.className = 'frameCard cutCard';
+    b.innerHTML = '<img alt=""><span class="label"></span><span class="count hidden"></span>';
+    const im = b.querySelector('img');
+    im.decoding = 'async'; im.src = f.thumb || f.src;
+    if (f.thumb) im.onerror = () => { im.onerror = null; im.src = f.src; };
+    b.querySelector('.label').textContent = f.name || `CUT ${i + 1}`;
+    b.addEventListener('click', () => { if (session && session.picks.length < session.n) { session.picks.push(i); renderPick(); } });
+    list.appendChild(b);
+  });
+}
+
+function renderPick() {
+  if (!session) return;
+  const { n, picks } = session;
+  const row = $('slotRow');
+  row.textContent = '';
+  for (let k = 0; k < n; k++) {
+    const d = document.createElement('div');
+    const f = CUTS[picks[k]];
+    d.className = 'slot' + (f ? ' filled' : k === picks.length ? ' next' : '');
+    d.textContent = k + 1;
+    if (f) {
+      d.style.backgroundImage = `url("${encodeURI(f.thumb || f.src)}")`;
+      d.title = '빼기';
+      d.addEventListener('click', () => { session.picks.splice(k, 1); renderPick(); });
+    }
+    row.appendChild(d);
+  }
+  document.querySelectorAll('#cutList .cutCard').forEach((b, i) => {
+    const c = picks.filter(p => p === i).length, el = b.querySelector('.count');
+    el.textContent = c; el.classList.toggle('hidden', !c);
+  });
+  $('pickGo').disabled = picks.length < n;
+  $('pickGo').textContent = picks.length < n ? `촬영 시작 (${picks.length}/${n})` : '촬영 시작 →';
+  $('pickRandom').disabled = picks.length >= n || !CUTS.length;
+}
+
+function pickRandom() {
+  if (!session || !CUTS.length) return;
+  while (session.picks.length < session.n) session.picks.push(Math.floor(Math.random() * CUTS.length));
+  renderPick();
+}
+
+const cutCache = new Map();
+async function prepareCut(i) {
+  if (!cutCache.has(i)) cutCache.set(i, prepareStatic(CUTS[i]).catch(e => { cutCache.delete(i); throw e; }));
+  return cutCache.get(i);
+}
+
+function setCutMode(on) {
+  screens.shoot.classList.toggle('cutMode', on);
+  screens.result.classList.toggle('sheetMode', on);
+}
+
+async function startCutSession() {
+  if (!session || session.picks.length < session.n || selecting) return;
+  selecting = true; document.body.style.cursor = 'progress';
+  try { await Promise.all([...new Set(session.picks)].map(prepareCut)); }
+  catch (e) { console.error('컷 프레임을 불러오지 못했습니다', e); return; }
+  finally { selecting = false; document.body.style.cursor = ''; }
+  session.shots = []; session.idx = 0; session.retakeIdx = null;
+  setCutMode(true);
+  screens.shoot.querySelector('.stage').style.setProperty('--ar', CUT.W / CUT.H);
+  await enterCut(0);
+  startCamera();
+}
+
+async function enterCut(k) {
+  session.idx = k;
+  cur = await prepareCut(session.picks[k]);
+  resetVisionState();
+  renderCutBar();
+  show('shoot');
+}
+
+function renderCutBar() {
+  const { n, idx, picks, shots, retakeIdx } = session;
+  $('cutCount').innerHTML = retakeIdx != null
+    ? `<b>${idx + 1}</b>번째 컷 다시 찍기`
+    : `<b>${idx + 1}</b> / ${n} 번째 사진`;
+  const box = $('cutThumbs');
+  box.textContent = '';
+  for (let k = 0; k < n; k++) {
+    const d = document.createElement('div');
+    const shot = shots[k];
+    d.className = (shot ? 'done' : '') + (k === idx ? ' current' : '');
+    const f = CUTS[picks[k]];
+    d.style.backgroundImage = shot && k !== idx ? `url("${shot.thumb}")` : `url("${encodeURI(f.thumb || f.src)}")`;
+    d.innerHTML = `<span>${k + 1}</span>`;
+    box.appendChild(d);
+  }
+}
+
+async function onCutShot(out) {
+  const t = document.createElement('canvas'); t.width = 150; t.height = 200;
+  t.getContext('2d').drawImage(out, 0, 0, 150, 200);
+  out.thumb = t.toDataURL('image/jpeg', 0.8);
+  session.shots[session.idx] = out;
+  if (session.retakeIdx != null) { session.retakeIdx = null; return finishSheet(); }
+  if (session.idx + 1 < session.n) { await wait(700); return enterCut(session.idx + 1); }
+  return finishSheet();
+}
+
+const sheetDesigns = {};
+function loadSheetDesign(mode) {
+  if (!(mode in sheetDesigns)) sheetDesigns[mode] = loadImg(LAYOUTS[mode].design).catch(() => null);
+  return sheetDesigns[mode];
+}
+
+async function composeSheet() {
+  const L = LAYOUTS[session.mode], S = SHEET.SCALE;
+  const c = document.createElement('canvas'); c.width = SHEET.W * S; c.height = SHEET.H * S;
+  const ctx = c.getContext('2d');
+  const design = await loadSheetDesign(session.mode);
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  if (design) ctx.drawImage(design, 0, 0, c.width, c.height);
+  else {
+    // 시트 디자인 이미지가 없으면 아래 띠에 날짜만
+    const d = new Date(), z = n => String(n).padStart(2, '0');
+    ctx.fillStyle = '#9a9a9a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    if (session.mode === '4') {  // 띠 2개로 자르는 선
+      ctx.strokeStyle = '#d8d8d8'; ctx.lineWidth = 2 * S; ctx.setLineDash([12 * S, 10 * S]);
+      ctx.beginPath(); ctx.moveTo(c.width / 2, 0); ctx.lineTo(c.width / 2, c.height); ctx.stroke(); ctx.setLineDash([]);
+    }
+    for (const f of L.footers) {
+      ctx.font = `700 ${Math.round(f.h * 0.22 * S)}px -apple-system, "Helvetica Neue", sans-serif`;
+      ctx.fillText(`${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())}`, (f.x + f.w / 2) * S, (f.y + f.h / 2) * S);
+    }
+  }
+  for (const cell of L.cells) {
+    const shot = session.shots[cell.i];
+    if (shot) ctx.drawImage(shot, cell.x * S, cell.y * S, cell.w * S, cell.h * S);
+  }
+  return c;
+}
+
+async function finishSheet() {
+  const sheet = await composeSheet();
+  resultBlob = await new Promise(r => sheet.toBlob(r, 'image/png'));
+  const img = $('resultImg');
+  if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
+  img.src = URL.createObjectURL(resultBlob);
+  screens.result.querySelector('.stage').style.setProperty('--ar', SHEET.W / SHEET.H);
+  // 컷을 눌러 다시 찍기 (시트당 1번)
+  const layer = $('retakeLayer');
+  layer.textContent = '';
+  layer.classList.toggle('used', session.retakeLeft <= 0);
+  for (const cell of LAYOUTS[session.mode].cells) {
+    const b = document.createElement('button');
+    Object.assign(b.style, { left: cell.x / SHEET.W * 100 + '%', top: cell.y / SHEET.H * 100 + '%',
+      width: cell.w / SHEET.W * 100 + '%', height: cell.h / SHEET.H * 100 + '%' });
+    b.setAttribute('aria-label', `${cell.i + 1}번째 컷 다시 찍기`);
+    b.addEventListener('click', () => retakeCut(cell.i));
+    layer.appendChild(b);
+  }
+  $('sheetHint').textContent = session.retakeLeft > 0
+    ? '마음에 안 드는 컷을 누르면 다시 찍을 수 있어요 (1번)' : '다시 찍기를 사용했어요';
+  busy = false;
+  show('result');
+}
+
+function retakeCut(k) {
+  if (!session || session.retakeLeft <= 0 || busy) return;
+  session.retakeLeft--;
+  session.retakeIdx = k;
+  enterCut(k);
+}
 
 /* ================= 촬영 ================= */
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -505,7 +847,8 @@ async function shoot() {
   busy = true;
   $('shutterBtn').disabled = true;
   const cd = $('countdown');
-  for (let n = CONFIG.COUNTDOWN; n >= 1; n--) {
+  const count = session && session.idx > 0 && session.retakeIdx == null ? CONFIG.CUT_COUNTDOWN : CONFIG.COUNTDOWN;
+  for (let n = count; n >= 1; n--) {
     if (!screens.shoot.classList.contains('active')) { busy = false; return; }
     cd.textContent = n; cd.classList.remove('tick'); void cd.offsetWidth; cd.classList.add('tick');
     await wait(1000);
@@ -519,6 +862,7 @@ async function shoot() {
   compose(out.getContext('2d'), out.width, out.height);
 
   const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  if (session) { busy = false; return onCutShot(out); }
 
   resultBlob = await new Promise(r => out.toBlob(r, 'image/png'));
   const img = $('resultImg');
@@ -532,7 +876,8 @@ async function shoot() {
 function save() {
   if (!resultBlob) return;
   const d = new Date(), z = n => String(n).padStart(2, '0');
-  const name = `${CONFIG.FILE_PREFIX}_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}.png`;
+  const tag = session ? `_${session.mode}cut` : '';
+  const name = `${CONFIG.FILE_PREFIX}${tag}_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}.png`;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(resultBlob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
@@ -550,11 +895,23 @@ function retake() {
   const startImg = await loadImg(IMG_START);
   screens.start.querySelector('.stage').style.setProperty('--ar', startImg.naturalWidth / startImg.naturalHeight);
   $('startImg').src = startImg.src;
-  FRAMES = await loadFrames();
+  [FRAMES, CUTS] = await Promise.all([loadFrames(), loadCuts()]);
   buildFrameList();
+  buildCutList();
   $('resultImg').src = '';
+  $('version').textContent = APP_VERSION;
+  // 모드 카드 이미지가 있으면 그림 대신 사용 (assets/mode-4cut.png, mode-9cut.png, mode-single.png)
+  document.querySelectorAll('.modeCard').forEach(b => {
+    const m = b.dataset.mode, src = `assets/mode-${m === 'single' ? 'single' : m + 'cut'}.png`;
+    loadImg(src).then(img => { img.className = 'art'; img.alt = ''; b.querySelector('.art').replaceWith(img); }).catch(() => {});
+    b.addEventListener('click', () => chooseMode(m));
+  });
+  $('pickRandom').addEventListener('click', pickRandom);
+  $('pickClear').addEventListener('click', () => { if (session) { session.picks = []; renderPick(); } });
+  $('pickGo').addEventListener('click', startCutSession);
+  document.querySelectorAll('[data-mode-back]').forEach(b => b.addEventListener('click', goBackToModes));
 
-  screens.start.addEventListener('click', goFrames);
+  screens.start.addEventListener('click', goModes);
   $('shutterBtn').addEventListener('click', shoot);
   $('saveBtn').addEventListener('click', save);
   $('retakeBtn').addEventListener('click', retake);
@@ -562,7 +919,7 @@ function retake() {
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBackToFrames));
   window.addEventListener('keydown', e => {
     if (e.code === 'Space' || e.code === 'Enter') {
-      if (screens.start.classList.contains('active')) goFrames();
+      if (screens.start.classList.contains('active')) goModes();
       else if (screens.frame.classList.contains('active') && FRAMES.length === 1) selectFrame(0);
       else if (screens.shoot.classList.contains('active')) shoot();
     }

@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v3)
+## 현재 상태 (v4.0) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -16,10 +16,18 @@ assets/start.jpg         시작 이미지 (START 글자 있는 버전)
 frames/frames.json       프레임 목록 (선택 화면에 이 순서대로 표시)
 frames/frame1.png        그린스크린 프레임 원본 (저장 해상도 = 이 파일 해상도)
 frames/thumbs/frame1.jpg 선택 화면용 썸네일 (가로 600px JPEG)
+cuts/cuts.json           4컷/9컷용 컷 프레임 목록 (3:4, 708×944, cutN.png)
+assets/sheet-*.png       (선택) 시트 디자인 배경 2400×3600
+templates/               인화 시트 가이드·좌표 (디자인용)
+CHANGELOG.md             버전 기록 + 되돌리는 방법
 ```
 
 ### 화면 흐름
 1. **시작 화면** — 시작 이미지를 화면에 맞춰 표시. START 글자 위에 투명 버튼이 있고(초록 glow pulse), 화면 아무 곳을 눌러도 다음으로 넘어감. 이때 카메라 권한도 미리 요청.
+1-1. **모드 선택** (`#modeScreen`) — 4컷 / 9컷 / 1장. 1장이면 아래 2번(기존 흐름), 4컷·9컷이면 1-2번
+1-2. **컷 프레임 고르기** (`#pickScreen`, 4컷·9컷) — 위에 빈 칸 N개, 아래 컷 프레임 목록. 누르면 다음 칸에 들어감(중복 가능),
+   칸을 누르면 빠짐, 랜덤 채우기/비우기. 다 채우면 촬영 시작 → 연속 촬영(아래 `#cutBar`에 "N / 9 번째 사진" + 모든 컷 미리보기,
+   찍은 컷은 ✓와 사진) → 시트 결과(컷을 눌러 1번 다시 찍기) → SAVE
 2. **프레임 선택 화면** — `frames/frames.json`의 프레임을 카드로 보여줌(번호 + 썸네일 + 이름). 누르면 촬영 화면으로.
 3. **촬영 화면** — 카메라 한 화면을 프레임 전체 뒤에 cover 방식으로 깔고, 초록색 영역을 투명하게 뚫어서 보이게 함. 거울처럼 좌우반전. 셔터 → 5,4,3,2,1 카운트다운 → 플래시 → 촬영. 왼쪽 위 ← 버튼은 프레임 선택으로 돌아감.
 4. **결과 화면** — 합성 결과를 보여줌. SAVE(PNG 다운로드) / RETAKE(다시 찍기, 1회만). 왼쪽 위 ⌂ 버튼은 시작 화면으로 돌아감.
@@ -32,7 +40,8 @@ frames/thumbs/frame1.jpg 선택 화면용 썸네일 (가로 600px JPEG)
 - 키보드: 스페이스/엔터로 시작·촬영.
 
 ### 핵심 코드 구조 (index.html 안의 script)
-- `CONFIG` — `COUNTDOWN`(5), `MAX_RETAKE`(1), `FILE_PREFIX`
+- `APP_VERSION` — 모드 선택 화면 오른쪽 아래에 표시. 버전 올릴 때 `CHANGELOG.md`도 같이
+- `CONFIG` — `COUNTDOWN`(5), `CUT_COUNTDOWN`(3), `MAX_RETAKE`(1), `FILE_PREFIX`
 - `IMG_START` — 시작 이미지 경로 (`assets/start.jpg`)
 - `loadFrames()` — `frames/frames.json`을 fetch해서 `FRAMES`(`[{ name, src, thumb }]`)를 채움. 실패하면 `FALLBACK_FRAMES`(frame1) 사용
 - `buildFrameList()` — 카드 생성. `thumb`가 없거나 깨지면 원본 `src`를 썸네일로 사용
@@ -95,11 +104,18 @@ frames/thumbs/frame1.jpg 선택 화면용 썸네일 (가로 600px JPEG)
 - 지금 프레임: `눈물` — 하늘 배경(`2.jpg` 9:16 → 1640×2360 크롭) + 눈물 도트(`eye-left/right.png`, Claude가 그림, 레퍼런스: 눈 아래로 하늘색 도트 두 줄)
 - 테스트: Chromium `--use-file-for-fake-video-capture=파일.y4m`로 얼굴이 나오는 영상을 가짜 카메라로 쓸 수 있음
 
-### 4×6 인화 시트 (9컷) — 규격 확정, 앱 흐름은 미정
+### 4×6 인화 시트 (4컷 / 9컷)
 - 4×6인치 세로 한 장에 3×3 = 9컷. 컷 = **반명함판 3×4cm (비율 3:4)**
 - 1x(300dpi): 시트 1200×1800, 컷 354×472, 여백 45, 간격 24, 아래 띠 1110×222 / 디자인은 2x(컷 708×944) 권장
 - 템플릿·좌표: `templates/` (`sheet_4x6_9cut.json`, 가이드 PNG, `README.md`). `frames/`에 넣지 말 것(자동 등록됨)
-- 미정: 9번 따로 찍는지, 컷마다 다른 프레임인지, 프린터 출력인지 PNG 저장인지
+- 4컷: 2×6인치 띠 2줄(가운데 자름), 띠마다 같은 4컷. 컷 276×368 @1x (비율 3:4 동일 → 컷 프레임 공유), 아래 띠 540×168
+- 코드: `SHEET`(SCALE 2 → 저장 2400×3600), `CUT`(708×944), `LAYOUTS`(4/9 좌표), `session`(mode, picks, shots, idx, retakeLeft, retakeIdx),
+  `chooseMode()`, `renderPick()`, `startCutSession()`, `enterCut()`, `renderCutBar()`, `onCutShot()`, `composeSheet()`, `finishSheet()`, `retakeCut()`
+- `shoot()`는 1장/컷 공용. 컷이면 `onCutShot()`으로 넘어감. 카운트다운: 첫 컷 `COUNTDOWN`(5), 이후 `CUT_COUNTDOWN`(3), 다시 찍기는 5
+- 다시 찍기: 시트당 1번(`MAX_RETAKE`), 결과 화면에서 컷을 누름(`#retakeLayer`)
+- 시트 디자인(`assets/sheet-4cut.png`/`sheet-9cut.png`, 2400×3600)은 맨 아래에 깔리고 컷이 위에 올라감. 없으면 흰 배경 + 날짜(4컷은 가운데 자르는 점선)
+- 컷 프레임 자동 등록: `cuts/`에 올리면 `process_frames.py`가 3:4로 맞춤(비율 다르면 초록/투명 구멍 기준으로 자름) → `cutN.png`, `cuts/cuts.json`
+- PNG 저장 후 프린트. 파일명 `photobooth_9cut_…png` / `photobooth_4cut_…png`
 
 ## 다음 할 일 (디벨롭)
 1. ~~이미지 파일 분리~~ (완료)
