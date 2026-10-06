@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.0) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.1) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -114,6 +114,9 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - `shoot()`는 1장/컷 공용. 컷이면 `onCutShot()`으로 넘어감. 카운트다운: 첫 컷 `COUNTDOWN`(5), 이후 `CUT_COUNTDOWN`(3), 다시 찍기는 5
 - 다시 찍기: 시트당 1번(`MAX_RETAKE`), 결과 화면에서 컷을 누름(`#retakeLayer`)
 - 시트 디자인(`assets/sheet-4cut.png`/`sheet-9cut.png`, 2400×3600)은 맨 아래에 깔리고 컷이 위에 올라감. 없으면 흰 배경 + 날짜(4컷은 가운데 자르는 점선)
+- 컷 고르기 화면: 작은 카드 그리드(`#cutList`, 약 200개 대비, 목록만 스크롤), 번호 `#N` = `cuts.json` 순서(+1).
+  숫자는 위아래 헷갈리지 않게 **항상 밑줄**(`.no`). 컷 썸네일 240px(`CUT_THUMB`), `loading="lazy"`
+  (프레임을 지우면 뒤 번호가 당겨짐)
 - 컷 프레임 자동 등록: `cuts/`에 올리면 `process_frames.py`가 3:4로 맞춤(비율 다르면 초록/투명 구멍 기준으로 자름) → `cutN.png`, `cuts/cuts.json`
 - PNG 저장 후 프린트. 파일명 `photobooth_9cut_…png` / `photobooth_4cut_…png`
 

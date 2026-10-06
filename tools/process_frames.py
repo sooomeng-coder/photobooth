@@ -33,6 +33,7 @@ LIST = FRAMES / 'frames.json'
 CUTS = ROOT / 'cuts'
 CUT_LIST = CUTS / 'cuts.json'
 CUT_SIZE = (708, 944)  # 반명함판 3x4cm @600dpi
+CUT_THUMB = 240        # 컷 고르기 화면은 카드가 작고 200개쯤 들어가서 썸네일도 작게
 MAX_SIDE = 2400
 THUMB_SIZE = 600
 EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
@@ -59,12 +60,12 @@ def has_real_alpha(im):
     return inner.getextrema()[0] < 250
 
 
-def make_thumb(im, dest):
+def make_thumb(im, dest, size=THUMB_SIZE):
     t = im.convert('RGBA')
     bg = Image.new('RGBA', t.size, (17, 17, 17, 255))  # 선택 화면 카드 배경색
     bg.alpha_composite(t)
     bg = bg.convert('RGB')
-    bg.thumbnail((THUMB_SIZE, THUMB_SIZE))
+    bg.thumbnail((size, size))
     dest.parent.mkdir(exist_ok=True)
     bg.save(dest, quality=82, optimize=True)
 
@@ -118,7 +119,7 @@ def process_cuts():
             im = im.convert('RGB')
         dest = CUTS / f'cut{no}.png'
         im.save(dest, optimize=True)
-        make_thumb(im, CUTS / 'thumbs' / f'cut{no}.jpg')
+        make_thumb(im, CUTS / 'thumbs' / f'cut{no}.jpg', CUT_THUMB)
         stem = p.stem.strip()
         label = f'CUT {no}' if GENERIC.match(stem) or GENERIC_PARTS.search(stem) else stem
         cuts.append({'name': label, 'src': f'cuts/cut{no}.png', 'thumb': f'cuts/thumbs/cut{no}.jpg'})
@@ -129,8 +130,11 @@ def process_cuts():
         changed = True
     for f in cuts:
         t = ROOT / f.get('thumb', '')
-        if f.get('thumb') and not t.exists() and (ROOT / f['src']).exists():
-            make_thumb(Image.open(ROOT / f['src']), t)
+        if not f.get('thumb') or not (ROOT / f['src']).exists():
+            continue
+        if not t.exists() or max(Image.open(t).size) > CUT_THUMB:
+            make_thumb(Image.open(ROOT / f['src']), t, CUT_THUMB)
+            print(f'컷 썸네일: {f["thumb"]}')
             changed = True
     if changed:
         write_list(CUT_LIST, cuts)
