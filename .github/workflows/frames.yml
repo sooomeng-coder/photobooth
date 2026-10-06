@@ -1,10 +1,10 @@
-# frames/ 폴더에 이미지를 올리면 자동으로 정리(frameN.png, 썸네일, frames.json 등록)해서 main에 커밋
+# frames/, cuts/, 디자인/ 에 이미지를 올리면 자동으로 정리(이름·크기 맞춤, 썸네일, 목록 등록)해서 main에 커밋
 name: process frames
 
 on:
   push:
     branches: [main]
-    paths: ['frames/**', 'cuts/**', 'tools/process_frames.py']
+    paths: ['frames/**', 'cuts/**', '디자인/**', 'tools/process_frames.py']
   workflow_dispatch:
 
 permissions:
@@ -28,7 +28,7 @@ jobs:
       - name: commit
         id: commit
         run: |
-          git add -A frames cuts
+          git add -A frames cuts assets 디자인
           if git diff --cached --quiet; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

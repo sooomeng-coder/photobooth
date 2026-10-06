@@ -18,6 +18,10 @@
 - 새 이미지를 cutN.png로 바꾸고 3:4(708x944)로 맞춤. 비율이 다르면 초록/투명 구멍이 가운데 오도록 잘라냄
 - 썸네일 cuts/thumbs/cutN.jpg, 목록 cuts/cuts.json
 
+디자인 이미지: 디자인/ 아래 용도별 폴더에 아무 이름으로 한 장 올리면 크기를 맞춰 assets/로 복사
+- 디자인/9컷_시트배경 → assets/sheet-9cut.png (2400x3600)   디자인/4컷_시트배경 → assets/sheet-4cut.png
+- 디자인/모드카드_4컷·9컷·1장 → assets/mode-4cut.png, mode-9cut.png, mode-single.png (600x900)
+
 사용: python3 tools/process_frames.py   (저장소 루트에서 실행, Pillow 필요)
 """
 import json
@@ -138,6 +142,40 @@ def process_cuts():
             changed = True
     if changed:
         write_list(CUT_LIST, cuts)
+
+
+DESIGN = ROOT / '디자인'
+DESIGN_TARGETS = {  # 폴더 이름: (만들 파일, 크기)
+    '9컷_시트배경': ('assets/sheet-9cut.png', (2400, 3600)),
+    '4컷_시트배경': ('assets/sheet-4cut.png', (2400, 3600)),
+    '모드카드_4컷': ('assets/mode-4cut.png', (600, 900)),
+    '모드카드_9컷': ('assets/mode-9cut.png', (600, 900)),
+    '모드카드_1장': ('assets/mode-single.png', (600, 900)),
+}
+
+
+def process_design():
+    """디자인/용도 폴더의 이미지를 크기 맞춰 assets/로. 폴더가 비면 assets 파일도 지움."""
+    for folder, (target, size) in DESIGN_TARGETS.items():
+        d, out = DESIGN / folder, ROOT / target
+        imgs = sorted((p for p in d.iterdir() if p.is_file() and p.suffix.lower() in EXTS), key=natural_key) if d.exists() else []
+        if not imgs:
+            if out.exists():
+                out.unlink()
+                print(f'디자인: {folder} 비어 있음 → {target} 삭제')
+            continue
+        if len(imgs) > 1:
+            print(f'디자인: {folder}에 이미지가 {len(imgs)}개 → 이름순 마지막 {imgs[-1].name} 사용')
+        im = Image.open(imgs[-1])
+        im.load()
+        im = cover_crop(im.convert('RGBA'), size)
+        if not has_real_alpha(im):
+            im = im.convert('RGB')
+        old = out.read_bytes() if out.exists() else None
+        out.parent.mkdir(exist_ok=True)
+        im.save(out, optimize=True)
+        if out.read_bytes() != old:
+            print(f'디자인: {folder}/{imgs[-1].name} → {target} {size}')
 
 
 def find(folder, stem):
@@ -280,6 +318,7 @@ def main():
     else:
         print('새 프레임 없음')
     process_cuts()
+    process_design()
 
 
 if __name__ == '__main__':
