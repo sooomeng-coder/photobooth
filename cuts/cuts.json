@@ -7,5 +7,14 @@
   {"name": "임시 6", "src": "cuts/cut6.png", "thumb": "cuts/thumbs/cut6.jpg"},
   {"name": "임시 7", "src": "cuts/cut7.png", "thumb": "cuts/thumbs/cut7.jpg"},
   {"name": "임시 8", "src": "cuts/cut8.png", "thumb": "cuts/thumbs/cut8.jpg"},
-  {"name": "임시 9", "src": "cuts/cut9.png", "thumb": "cuts/thumbs/cut9.jpg"}
+  {"name": "임시 9", "src": "cuts/cut9.png", "thumb": "cuts/thumbs/cut9.jpg"},
+  {"name": "001", "src": "cuts/cut10.png", "thumb": "cuts/thumbs/cut10.jpg"},
+  {"name": "002", "src": "cuts/cut11.png", "thumb": "cuts/thumbs/cut11.jpg"},
+  {"name": "002_1", "src": "cuts/cut12.png", "thumb": "cuts/thumbs/cut12.jpg"},
+  {"name": "003", "src": "cuts/cut13.png", "thumb": "cuts/thumbs/cut13.jpg"},
+  {"name": "004", "src": "cuts/cut14.png", "thumb": "cuts/thumbs/cut14.jpg"},
+  {"name": "005", "src": "cuts/cut15.png", "thumb": "cuts/thumbs/cut15.jpg"},
+  {"name": "005_2", "src": "cuts/cut16.png", "thumb": "cuts/thumbs/cut16.jpg"},
+  {"name": "006", "src": "cuts/cut17.png", "thumb": "cuts/thumbs/cut17.jpg"},
+  {"name": "007", "src": "cuts/cut18.png", "thumb": "cuts/thumbs/cut18.jpg"}
 ]
