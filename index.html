@@ -279,7 +279,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.2';
+const APP_VERSION = 'v4.3';
 const CONFIG = {
   COUNTDOWN: 5,          // 카운트다운 초 (1장, 그리고 4컷/9컷의 첫 컷)
   CUT_COUNTDOWN: 3,      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초
@@ -743,8 +743,25 @@ function pickRandom() {
 
 const cutCache = new Map();
 async function prepareCut(i) {
-  if (!cutCache.has(i)) cutCache.set(i, prepareStatic(CUTS[i]).catch(e => { cutCache.delete(i); throw e; }));
+  if (!cutCache.has(i)) cutCache.set(i, prepareStatic(CUTS[i]).then(c => rotateForShoot(c, CUTS[i].shootRotate))
+    .catch(e => { cutCache.delete(i); throw e; }));
   return cutCache.get(i);
+}
+
+// 옆으로 누운 컷(cuts.json의 shootRotate: -90 / 90 / 180): 촬영할 땐 돌려서 똑바로 보여주고,
+// 찍은 사진은 onCutShot에서 다시 원래 방향(인화 방향)으로 돌려 놓음
+function rotateCanvas(src, deg) {
+  const swap = Math.abs(deg) === 90;
+  const w = src.width || src.naturalWidth, h = src.height || src.naturalHeight;
+  const c = document.createElement('canvas'); c.width = swap ? h : w; c.height = swap ? w : h;
+  const ctx = c.getContext('2d');
+  ctx.translate(c.width / 2, c.height / 2); ctx.rotate(deg * Math.PI / 180); ctx.drawImage(src, -w / 2, -h / 2);
+  return c;
+}
+function rotateForShoot(c, deg) {
+  if (!deg) return c;
+  const overlay = rotateCanvas(c.overlay, deg);
+  return { ...c, overlay, W: overlay.width, H: overlay.height, rotate: deg };
 }
 
 function setCutMode(on) {
@@ -769,6 +786,7 @@ async function enterCut(k) {
   session.idx = k;
   cur = await prepareCut(session.picks[k]);
   resetVisionState();
+  screens.shoot.querySelector('.stage').style.setProperty('--ar', cur.W / cur.H);  // 누운 컷은 가로로
   renderCutBar();
   show('shoot');
 }
@@ -792,6 +810,7 @@ function renderCutBar() {
 }
 
 async function onCutShot(out) {
+  if (cur.rotate) out = rotateCanvas(out, -cur.rotate);  // 인화 방향으로 되돌림
   const t = document.createElement('canvas'); t.width = 150; t.height = 200;
   t.getContext('2d').drawImage(out, 0, 0, 150, 200);
   out.thumb = t.toDataURL('image/jpeg', 0.8);

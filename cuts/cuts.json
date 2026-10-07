@@ -22,9 +22,14 @@
   {"name": "1007_3", "src": "cuts/cut21.png", "thumb": "cuts/thumbs/cut21.jpg"},
   {"name": "1007_4", "src": "cuts/cut22.png", "thumb": "cuts/thumbs/cut22.jpg"},
   {"name": "1007_5", "src": "cuts/cut23.png", "thumb": "cuts/thumbs/cut23.jpg"},
-  {"name": "1007_6", "src": "cuts/cut24.png", "thumb": "cuts/thumbs/cut24.jpg"},
-  {"name": "1007_7", "src": "cuts/cut25.png", "thumb": "cuts/thumbs/cut25.jpg"},
+  {"name": "1007_6", "src": "cuts/cut24.png", "thumb": "cuts/thumbs/cut24.jpg", "shootRotate": -90},
+  {"name": "1007_7", "src": "cuts/cut25.png", "thumb": "cuts/thumbs/cut25.jpg", "shootRotate": -90},
   {"name": "1007_8", "src": "cuts/cut26.png", "thumb": "cuts/thumbs/cut26.jpg"},
-  {"name": "1007_9", "src": "cuts/cut27.png", "thumb": "cuts/thumbs/cut27.jpg"},
-  {"name": "1007_10", "src": "cuts/cut28.png", "thumb": "cuts/thumbs/cut28.jpg"}
+  {"name": "1007_9", "src": "cuts/cut27.png", "thumb": "cuts/thumbs/cut27.jpg", "shootRotate": -90},
+  {"name": "1007_10", "src": "cuts/cut28.png", "thumb": "cuts/thumbs/cut28.jpg", "shootRotate": -90},
+  {"name": "1007_11", "src": "cuts/cut29.png", "thumb": "cuts/thumbs/cut29.jpg", "shootRotate": -90},
+  {"name": "1007_12", "src": "cuts/cut30.png", "thumb": "cuts/thumbs/cut30.jpg", "shootRotate": -90},
+  {"name": "1007_13", "src": "cuts/cut31.png", "thumb": "cuts/thumbs/cut31.jpg"},
+  {"name": "1007_14", "src": "cuts/cut32.png", "thumb": "cuts/thumbs/cut32.jpg"},
+  {"name": "1007_15", "src": "cuts/cut33.png", "thumb": "cuts/thumbs/cut33.jpg"}
 ]
