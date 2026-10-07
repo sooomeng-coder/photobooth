@@ -21,5 +21,10 @@
   {"name": "1007_2", "src": "cuts/cut20.png", "thumb": "cuts/thumbs/cut20.jpg"},
   {"name": "1007_3", "src": "cuts/cut21.png", "thumb": "cuts/thumbs/cut21.jpg"},
   {"name": "1007_4", "src": "cuts/cut22.png", "thumb": "cuts/thumbs/cut22.jpg"},
-  {"name": "1007_5", "src": "cuts/cut23.png", "thumb": "cuts/thumbs/cut23.jpg"}
+  {"name": "1007_5", "src": "cuts/cut23.png", "thumb": "cuts/thumbs/cut23.jpg"},
+  {"name": "1007_6", "src": "cuts/cut24.png", "thumb": "cuts/thumbs/cut24.jpg"},
+  {"name": "1007_7", "src": "cuts/cut25.png", "thumb": "cuts/thumbs/cut25.jpg"},
+  {"name": "1007_8", "src": "cuts/cut26.png", "thumb": "cuts/thumbs/cut26.jpg"},
+  {"name": "1007_9", "src": "cuts/cut27.png", "thumb": "cuts/thumbs/cut27.jpg"},
+  {"name": "1007_10", "src": "cuts/cut28.png", "thumb": "cuts/thumbs/cut28.jpg"}
 ]
