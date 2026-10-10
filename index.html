@@ -25,6 +25,7 @@
   #startScreen::before { content: ''; position: absolute; inset: 0; background: rgba(236,243,253,.68); pointer-events: none; }
   #startScreen.customBg::before { display: none; }
   #startScreen > * { position: relative; }
+  #startScreen > .version { position: absolute; color: rgba(17,17,17,.4); } /* 버전 · 카메라 · 오프라인 상태 */
   #startTitle { font-size: clamp(30px, 6.2vmin, 64px); font-weight: 900; line-height: 1.22; letter-spacing: -.01em; white-space: pre-line; }
   #startSub { font-size: clamp(14px, 2.3vmin, 22px); margin-top: -2vh; }
   #startModes { display: flex; gap: clamp(28px, 10vmin, 120px); justify-content: center; margin-top: 3vh; }
@@ -253,6 +254,7 @@
   </div>
   <button id="startGo">START</button>
   <p id="startHint"></p>
+  <span class="version" id="version"></span>
 </section>
 
 <!-- 1-1. 모드 선택: 4컷 / 9컷 / 1장 -->
@@ -274,7 +276,6 @@
     </button>
   </div>
   <button class="home" data-home aria-label="처음으로">⌂</button>
-  <span class="version" id="version"></span>
 </section>
 
 <!-- 1-2. 컷 프레임 고르기 (4컷/9컷) -->
@@ -338,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.5';
+const APP_VERSION = 'v4.7';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -618,19 +619,61 @@ function drawStickers(ctx, W, H, sw, sh) {
 }
 
 /* ================= 카메라 ================= */
+// USB-C 웹캠(외부 카메라)이 꽂혀 있으면 자동으로 그걸 씀. 없으면 아이패드 앞 카메라
+// 아이패드 내장 카메라 이름: "전면 카메라", "후면 (초광각) 카메라", "Front Camera" 등 → 이 이름이 아니면 외부 카메라로 봄
+const BUILTIN_CAM = /front|back|rear|전면|후면|desk ?view|데스크/i;
+const VIDEO_SIZE = { width: { ideal: 1920 }, height: { ideal: 1080 } };
+let camLabel = '';
+async function findExternalCam() {
+  try {
+    const cams = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'videoinput');
+    return cams.find(d => d.label && !BUILTIN_CAM.test(d.label)) || null;
+  } catch (e) { return null; }
+}
 async function startCamera() {
   if (stream) return;
   const msg = $('camMsg');
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+    let s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', ...VIDEO_SIZE }, audio: false });
+    camLabel = '앞 카메라';
+    const ext = await findExternalCam(); // 권한을 받은 뒤라야 카메라 이름이 보임
+    if (ext) {
+      try {
+        const s2 = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: ext.deviceId }, ...VIDEO_SIZE }, audio: false });
+        s.getTracks().forEach(t => t.stop());
+        s = s2; camLabel = '외부 카메라';
+      } catch (e) { /* 외부 카메라를 못 열면 앞 카메라 그대로 */ }
+    }
+    stream = s;
     video.srcObject = stream;
     await video.play();
     msg.classList.add('hidden');
+    renderVersion();
   } catch (e) {
     msg.innerHTML = '카메라를 열 수 없어요.<br>브라우저에서 카메라 권한을 허용해 주세요.<br><small>(https 주소 또는 localhost에서 열어야 카메라가 동작해요)</small>';
     msg.classList.remove('hidden');
   }
+}
+// 웹캠을 꽂거나 뽑으면 카메라를 다시 고름 (촬영 카운트다운 중이면 끝난 뒤에)
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+  navigator.mediaDevices.addEventListener('devicechange', () => {
+    if (!stream) return;
+    const restart = () => {
+      if (busy) { setTimeout(restart, 1000); return; }
+      stream.getTracks().forEach(t => t.stop());
+      stream = null;
+      startCamera();
+    };
+    setTimeout(restart, 500);
+  });
+}
+// 모드 선택 화면 오른쪽 아래: 버전 · 카메라(실제 화질) · 오프라인 상태
+let offlineText = '';
+function renderVersion() {
+  const parts = [APP_VERSION];
+  if (camLabel && video.videoWidth) parts.push(`${camLabel} ${video.videoWidth}×${video.videoHeight}`);
+  if (offlineText) parts.push(offlineText);
+  $('version').textContent = parts.join(' · ');
 }
 
 /* ================= 화면 전환 ================= */
@@ -1059,6 +1102,23 @@ function applyUI() {
   }
 }
 
+/* ================= 오프라인 대비 (sw.js) ================= */
+// 와이파이에서 한 번 열어 두면 행사장에서 인터넷이 끊겨도 앱이 돌아감. 준비되면 버전 옆에 표시
+function setupOffline() {
+  if (!('serviceWorker' in navigator) || (location.protocol !== 'https:' && location.hostname !== 'localhost')) return;
+  const label = (t) => { offlineText = t || ''; renderVersion(); };
+  navigator.serviceWorker.addEventListener('message', e => {
+    const d = e.data || {};
+    if (d.type !== 'offline-status') return;
+    label(d.ok >= d.total ? '오프라인 준비됨' : `오프라인 ${d.ok}/${d.total}`);
+  });
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(reg => {
+    if (!navigator.onLine) { label('오프라인'); return; }
+    label('오프라인 준비 중');
+    if (reg.active) reg.active.postMessage('warm');
+  }).catch(() => {});
+}
+
 /* ================= 초기화 ================= */
 (async function init() {
   UI = await loadUI();
@@ -1074,6 +1134,7 @@ function applyUI() {
   buildFrameList();
   $('resultImg').src = '';
   $('version').textContent = APP_VERSION;
+  setupOffline();
   applyUI();
   document.querySelectorAll('.modeCard').forEach(b => b.addEventListener('click', () => chooseMode(b.dataset.mode)));
   $('pagePrev').addEventListener('click', () => goPage(-1));
