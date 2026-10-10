@@ -139,6 +139,16 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - 컷 프레임 자동 등록: `cuts/`에 올리면 `process_frames.py`가 3:4로 맞춤(비율 다르면 초록/투명 구멍 기준으로 자름) → `cutN.png`, `cuts/cuts.json`
 - PNG 저장 후 프린트. 파일명 `photobooth_9cut_…png` / `photobooth_4cut_…png`
 
+## 오프라인 (v4.6)
+- `sw.js`: 같은 출처 GET은 네트워크 우선 + 캐시 저장, 실패 시 캐시. 앱이 `warm` 메시지를 보내면 `frames.json`/`cuts.json`/`assets/ui/manifest.json`에 있는 이미지와 `vendor/mediapipe` 파일 중 빠진 것만 받아 둠
+- 앱: `setupOffline()` (https 또는 localhost에서만 등록), 버전 라벨에 준비 상태 표시
+- 새 vendor 파일이 생기면 `sw.js`의 `CORE` 목록에 추가. 캐시 구조를 바꾸면 `CACHE` 이름의 숫자를 올림
+
+## 카메라 선택 (v4.7)
+- `startCamera()`: 먼저 앞 카메라(`facingMode: 'user'`)로 권한을 받고, `findExternalCam()`이 이름이 내장 카메라(`BUILTIN_CAM` 정규식: 전면/후면/front/back/desk view)가 아닌 카메라를 찾으면 그걸로 바꿈
+- `devicechange` 때 카메라 다시 고름(`busy`면 끝난 뒤). 버전 라벨은 `renderVersion()` (버전 · 카메라 해상도 · 오프라인 상태)
+- 영상은 지금처럼 좌우반전(거울)으로 보여주고 저장
+
 ## 다음 할 일 (디벨롭)
 1. ~~이미지 파일 분리~~ (완료)
 2. ~~프레임 여러 개 지원 (`frames.json`)~~ (완료) → 실제 프레임 이미지 추가만 하면 됨
