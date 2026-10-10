@@ -15,6 +15,14 @@ git checkout <버전의 커밋> -- index.html tools .github
 git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 ```
 
+## v4.4 — 새 시작 화면 (시안 반영)
+- 시작 화면이 모드 선택을 겸함: 제목 3줄 · 안내 문구 · [합성배경 1컷] [자유 선택 9컷] 카드 · START
+- 카드를 눌러 고르고 START → 합성배경 1컷 = 1장 프레임 고르기, 자유 선택 9컷 = 9컷 프레임 고르기
+- 4컷은 숨김(`CONFIG.START_MODES`에 '4'를 넣으면 다시 보임). 예전 "HOW MANY CUTS?" 화면은 안 씀
+- 문구는 `CONFIG.START_TITLE`, `START_SUB`. 배경 기본값은 하늘 그림을 흐리게(`assets/start-bg.jpg`),
+  `디자인/시작화면`에 올리면 그 그림으로(흐림 없이)
+- 예전 시작 그림(펭귄 + START, `assets/start.jpg`)은 삭제. 되돌리려면 v4.3으로
+
 ## v4.3 — 누운 컷 프레임 돌려서 찍기
 - `cuts/cuts.json`에 `"shootRotate": -90`(반시계 90°)·`90`·`180`을 넣은 컷은 촬영할 때 똑바로 세워서(가로 화면) 보여주고,
   찍은 사진은 원래 방향으로 돌려서 시트에 넣음 → 인화물에선 프레임과 함께 얼굴도 누워 있음

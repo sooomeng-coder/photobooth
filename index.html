@@ -19,15 +19,40 @@
     height: min(var(--avail-h, 100vh), calc(100vw / var(--ar))); }
   .stage > img, .stage > canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
-  /* 시작 화면 */
-  #startScreen { cursor: pointer; }
-  #startBtn { position: absolute; left: 24%; top: 64%; width: 52%; height: 22%;
-    border: 0; background: transparent; cursor: pointer; border-radius: 40px;
-    animation: pulse 1.6s ease-in-out infinite; }
-  #startBtn:active { transform: scale(.96); }
-  @keyframes pulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(0,255,60,0); }
-    50% { box-shadow: 0 0 40px 8px rgba(0,255,60,.35); }
+  /* 시작 화면: 제목 · 안내 · 모드 카드 · START (시안: 흐린 하늘 배경 위 검정 글씨, 얇은 선) */
+  #startScreen { flex-direction: column; justify-content: center; gap: 5vh; padding: 6vh 6vw calc(6vh + env(safe-area-inset-bottom, 0px));
+    background: #dce8f8 center / cover no-repeat; color: #111; text-align: center; }
+  #startScreen::before { content: ''; position: absolute; inset: 0; background: rgba(236,243,253,.68); pointer-events: none; }
+  #startScreen.customBg::before { display: none; }
+  #startScreen > * { position: relative; }
+  #startTitle { font-size: clamp(30px, 6.2vmin, 64px); font-weight: 900; line-height: 1.22; letter-spacing: -.01em; white-space: pre-line; }
+  #startSub { font-size: clamp(14px, 2.3vmin, 22px); margin-top: -2vh; }
+  #startModes { display: flex; gap: clamp(28px, 10vmin, 120px); justify-content: center; margin-top: 3vh; }
+  .startMode { display: flex; flex-direction: column; align-items: center; gap: 1.6vmin; background: none; border: 0; padding: 0;
+    cursor: pointer; font: inherit; color: inherit; }
+  .startMode .card { width: clamp(130px, 27vmin, 260px); aspect-ratio: 1 / 1.3; border: 1px solid #222; padding: 7%;
+    display: grid; transition: transform .12s, box-shadow .12s, border-color .12s; }
+  .startMode .card i { background: rgba(255,255,255,.5); }
+  .startMode .card.one { grid-template: 1fr / 1fr; padding: 7% 9%; }
+  .startMode .card.nine { grid-template: repeat(3, 1fr) / repeat(3, 1fr); gap: 4%; }
+  .startMode .card img { width: 100%; height: 100%; object-fit: contain; grid-area: 1 / 1 / -1 / -1; }
+  .startMode span { font-size: clamp(15px, 2.4vmin, 24px); }
+  .startMode:active .card { transform: scale(.97); }
+  .startMode.on .card { border: 3px solid #111; box-shadow: 0 0 0 6px rgba(255,255,255,.75); }
+  .startMode.on span { font-weight: 800; }
+  #startModes.nudge .card { animation: nudge .5s; }
+  @keyframes nudge { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+  #startGo { margin-top: 3vh; width: clamp(200px, 40vmin, 400px); padding: .55em 0; border: 1px solid #222; background: rgba(255,255,255,.15);
+    font: 300 clamp(26px, 5vmin, 52px) "Helvetica Neue", -apple-system, sans-serif; letter-spacing: .04em; color: #1d2a3a; cursor: pointer; }
+  #startGo:active { transform: scale(.97); }
+  #startHint { font-size: clamp(13px, 2vmin, 18px); color: #333; min-height: 1.4em; margin-top: -3vh; }
+  @media (orientation: landscape) {
+    #startScreen { gap: 3vh; padding-top: 4vh; padding-bottom: 3vh; }
+    #startTitle { font-size: clamp(26px, 5.2vmin, 56px); }
+    #startModes { margin-top: 1vh; }
+    .startMode .card { width: clamp(120px, 22vmin, 220px); }
+    #startGo { margin-top: 1vh; font-size: clamp(24px, 4.4vmin, 46px); }
+    #startHint { margin-top: -2vh; }
   }
 
   /* 촬영 화면 */
@@ -195,10 +220,15 @@
 
 <!-- 1. 시작 화면 -->
 <section id="startScreen" class="screen active">
-  <div class="stage">
-    <img id="startImg" alt="start">
-    <button id="startBtn" aria-label="START"></button>
+  <h1 id="startTitle"></h1>
+  <p id="startSub"></p>
+  <div id="startModes">
+    <button class="startMode" data-mode="single"><div class="card one"><i></i></div><span>합성배경 1컷</span></button>
+    <button class="startMode hidden" data-mode="4"><div class="card nine"><i></i><i></i><i></i><i></i></div><span>4컷</span></button>
+    <button class="startMode" data-mode="9"><div class="card nine"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>자유 선택 9컷</span></button>
   </div>
+  <button id="startGo">START</button>
+  <p id="startHint"></p>
 </section>
 
 <!-- 1-1. 모드 선택: 4컷 / 9컷 / 1장 -->
@@ -279,14 +309,18 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.3';
+const APP_VERSION = 'v4.4';
 const CONFIG = {
+  // 시작 화면 문구 (줄바꿈은 \n)
+  START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
+  START_SUB: '찾아와주셔서 감사합니다. 이용 시간은 5분입니다.',
+  START_MODES: ['single', '9'],   // 시작 화면에 보여줄 모드 (4컷을 다시 켜려면 '4' 추가)
   COUNTDOWN: 5,          // 카운트다운 초 (1장, 그리고 4컷/9컷의 첫 컷)
   CUT_COUNTDOWN: 3,      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초
   MAX_RETAKE: 1,         // 다시 찍기 허용 횟수
   FILE_PREFIX: 'photobooth',
 };
-const IMG_START = 'assets/start.jpg';
+const IMG_START_BG = 'assets/start-bg.jpg';  // 시작 화면 기본 배경 (디자인/시작화면에 올리면 그걸로 바뀜)
 
 /* 프레임 목록은 frames/frames.json 에서 불러옴.
    프레임 추가: frames/ 폴더에 PNG를 넣고 frames.json 에 한 줄 추가
@@ -577,7 +611,21 @@ function show(name) {
   if (name === 'shoot') { $('shutterBtn').disabled = false; $('countdown').textContent = ''; loop(); }
 }
 
-function goModes() { show('mode'); startCamera(); } // 카메라 권한을 미리 받아둠
+let startPick = null;
+function pickStartMode(m) {
+  startPick = m;
+  document.querySelectorAll('.startMode').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+  $('startHint').textContent = '';
+}
+function goStart() {
+  if (!startPick) {
+    $('startHint').textContent = '위에서 하나를 골라주세요';
+    const m = $('startModes'); m.classList.remove('nudge'); void m.offsetWidth; m.classList.add('nudge');
+    return;
+  }
+  startCamera();  // 카메라 권한을 미리 받아둠
+  chooseMode(startPick);
+}
 
 const overlayCache = new Map();
 let selecting = false;
@@ -660,6 +708,7 @@ function buildFrameList() {
 function goHome() {
   busy = false; retakesLeft = CONFIG.MAX_RETAKE; resultBlob = null; session = null;
   setCutMode(false);
+  pickStartMode(null);
   show('start');
 }
 function goBackToFrames() {
@@ -667,7 +716,7 @@ function goBackToFrames() {
   if (session) { session.shots = []; session.idx = 0; session.retakeIdx = null; setCutMode(false); renderPick(); show('pick'); }
   else show('frame');
 }
-function goBackToModes() { busy = false; session = null; setCutMode(false); show('mode'); }
+function goBackToModes() { busy = false; session = null; setCutMode(false); show('start'); }
 
 /* ================= 4컷 / 9컷: 모드 → 프레임 고르기 → 연속 촬영 → 시트 ================= */
 async function loadCuts() {
@@ -964,9 +1013,9 @@ function applyUI() {
     $(id).classList.add('skinBg'); $(id).style.backgroundImage = `url("${UI.bgMenu}")`;
   }
   // 모드 카드 그림
-  document.querySelectorAll('.modeCard').forEach(b => {
+  document.querySelectorAll('.startMode').forEach(b => {
     const m = b.dataset.mode, src = UI[m === 'single' ? 'modeSingle' : 'mode' + m];
-    if (src) loadImg(src).then(img => { img.className = 'art'; img.alt = ''; b.querySelector('.art').replaceWith(img); }).catch(() => {});
+    if (src) loadImg(src).then(img => { img.alt = ''; const c = b.querySelector('.card'); c.textContent = ''; c.appendChild(img); }).catch(() => {});
   });
   // 글꼴: 화면 글자 전체에 적용
   if (UI.font && window.FontFace) {
@@ -981,9 +1030,14 @@ function applyUI() {
 /* ================= 초기화 ================= */
 (async function init() {
   UI = await loadUI();
-  const startImg = await loadImg(UI.start || IMG_START);
-  screens.start.querySelector('.stage').style.setProperty('--ar', startImg.naturalWidth / startImg.naturalHeight);
-  $('startImg').src = startImg.src;
+  $('startTitle').textContent = CONFIG.START_TITLE;
+  $('startSub').textContent = CONFIG.START_SUB;
+  screens.start.style.backgroundImage = `url("${UI.bgStart || IMG_START_BG}")`;
+  screens.start.classList.toggle('customBg', !!UI.bgStart);
+  document.querySelectorAll('.startMode').forEach(b => {
+    b.classList.toggle('hidden', !CONFIG.START_MODES.includes(b.dataset.mode));
+    b.addEventListener('click', () => pickStartMode(b.dataset.mode));
+  });
   [FRAMES, CUTS] = await Promise.all([loadFrames(), loadCuts()]);
   buildFrameList();
   buildCutList();
@@ -996,7 +1050,7 @@ function applyUI() {
   $('pickGo').addEventListener('click', startCutSession);
   document.querySelectorAll('[data-mode-back]').forEach(b => b.addEventListener('click', goBackToModes));
 
-  screens.start.addEventListener('click', goModes);
+  $('startGo').addEventListener('click', goStart);
   $('shutterBtn').addEventListener('click', shoot);
   $('saveBtn').addEventListener('click', save);
   $('retakeBtn').addEventListener('click', retake);
@@ -1004,7 +1058,7 @@ function applyUI() {
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBackToFrames));
   window.addEventListener('keydown', e => {
     if (e.code === 'Space' || e.code === 'Enter') {
-      if (screens.start.classList.contains('active')) goModes();
+      if (screens.start.classList.contains('active')) goStart();
       else if (screens.frame.classList.contains('active') && FRAMES.length === 1) selectFrame(0);
       else if (screens.shoot.classList.contains('active')) shoot();
     }

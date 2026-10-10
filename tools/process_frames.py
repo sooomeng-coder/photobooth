@@ -150,9 +150,8 @@ FONT_EXTS = {'.ttf', '.otf', '.woff', '.woff2'}
 #   cover  = 비율 맞춰 가운데 기준으로 잘라 정확히 그 크기
 #   inside = 비율 그대로, 그 크기 안에 들어가게만 줄임 (버튼·글자 이미지)
 #   font   = 글꼴 파일 그대로 복사
-#   start  = 시작 화면: 비율 그대로 긴 변 2400 이하, 폴더가 비어도 기존 파일 유지
 DESIGN_TARGETS = {
-    '시작화면':           ('start',      'assets/start.jpg',          (2400, 2400), 'start'),
+    '시작화면':           ('bgStart',    'assets/ui/bg-start.jpg',    (1640, 2360), 'cover'),
     '모드카드_4컷':        ('mode4',      'assets/mode-4cut.png',      (600, 900),   'cover'),
     '모드카드_9컷':        ('mode9',      'assets/mode-9cut.png',      (600, 900),   'cover'),
     '모드카드_1장':        ('modeSingle', 'assets/mode-single.png',    (600, 900),   'cover'),

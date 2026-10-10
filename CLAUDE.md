@@ -6,13 +6,13 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.3) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.4) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
 ```
 index.html               앱 전체 (HTML/CSS/JS)
-assets/start.jpg         시작 이미지 (START 글자 있는 버전)
+assets/start-bg.jpg      시작 화면 기본 배경 (하늘 그림, 앱이 흐리게 덮음)
 frames/frames.json       프레임 목록 (선택 화면에 이 순서대로 표시)
 frames/frame1.png        그린스크린 프레임 원본 (저장 해상도 = 이 파일 해상도)
 frames/thumbs/frame1.jpg 선택 화면용 썸네일 (가로 600px JPEG)
@@ -23,8 +23,10 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 ```
 
 ### 화면 흐름
-1. **시작 화면** — 시작 이미지를 화면에 맞춰 표시. START 글자 위에 투명 버튼이 있고(초록 glow pulse), 화면 아무 곳을 눌러도 다음으로 넘어감. 이때 카메라 권한도 미리 요청.
-1-1. **모드 선택** (`#modeScreen`) — 4컷 / 9컷 / 1장. 1장이면 아래 2번(기존 흐름), 4컷·9컷이면 1-2번
+1. **시작 화면** (`#startScreen`, v4.4 시안) — 제목 3줄(`CONFIG.START_TITLE`) · 안내(`START_SUB`) · 모드 카드 [합성배경 1컷] [자유 선택 9컷] · START.
+   카드를 눌러 고르고(`pickStartMode`) START(`goStart`) → 1컷 = 2번 1장 프레임 고르기, 9컷 = 1-2번. 안 고르고 START면 안내 + 흔들림.
+   이때 카메라 권한도 요청. 보여줄 모드는 `CONFIG.START_MODES`(지금 ['single','9'], 4컷 숨김). 배경: `UI.bgStart` 또는 `assets/start-bg.jpg`(+흐린 덮개)
+   (예전 `#modeScreen` "HOW MANY CUTS?"는 DOM에 남아 있지만 안 씀. 뒤로(`data-mode-back`)는 시작 화면으로)
 1-2. **컷 프레임 고르기** (`#pickScreen`, 4컷·9컷) — 위에 빈 칸 N개, 아래 컷 프레임 목록. 누르면 다음 칸에 들어감(중복 가능),
    칸을 누르면 빠짐, 랜덤 채우기/비우기. 다 채우면 촬영 시작 → 연속 촬영(아래 `#cutBar`에 "N / 9 번째 사진" + 모든 컷 미리보기,
    찍은 컷은 ✓와 사진) → 시트 결과(컷을 눌러 1번 다시 찍기) → SAVE
@@ -42,7 +44,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 ### 핵심 코드 구조 (index.html 안의 script)
 - `APP_VERSION` — 모드 선택 화면 오른쪽 아래에 표시. 버전 올릴 때 `CHANGELOG.md`도 같이
 - `CONFIG` — `COUNTDOWN`(5), `CUT_COUNTDOWN`(3), `MAX_RETAKE`(1), `FILE_PREFIX`
-- `IMG_START` — 시작 이미지 경로 (`assets/start.jpg`)
+- `IMG_START_BG` — 시작 화면 기본 배경 (`assets/start-bg.jpg`)
 - `loadFrames()` — `frames/frames.json`을 fetch해서 `FRAMES`(`[{ name, src, thumb }]`)를 채움. 실패하면 `FALLBACK_FRAMES`(frame1) 사용
 - `buildFrameList()` — 카드 생성. `thumb`가 없거나 깨지면 원본 `src`를 썸네일로 사용
 - `buildOverlay(img)` — 크로마키 처리. `diff = g - max(r,b)` 기준으로 `HI=110` 이상은 완전 투명, `LO=40~110`은 부드럽게 반투명 + 초록 번짐 제거(despill). 프레임별로 `overlayCache`에 캐시
@@ -107,9 +109,9 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 ### 업로드 폴더 (사용자가 GitHub 웹에서 올리는 곳) — 저장소 첫 화면 `README.md`에 표로 정리
 - `cuts/` 컷 프레임, `frames/` 1장 프레임, `디자인/<용도>/` 디자인 이미지(용도별 폴더에 한 장)
   - 요소별 폴더 목록·크기·맞추는 방식은 `tools/process_frames.py`의 `DESIGN_TARGETS` (폴더 → manifest 키 → 파일)
-  - 시작화면, 모드카드 3, 시트배경 2, 배경_메뉴화면, 제목 3, 버튼 8(셔터·처음으로·뒤로·촬영시작·랜덤채우기·비우기·SAVE·RETAKE), 카운트다운 5~1, 글꼴
+  - 시작화면(= 시작 화면 배경, `bgStart`), 모드카드 3(시작 화면 카드 그림), 시트배경 2, 배경_메뉴화면, 제목 3, 버튼 8(셔터·처음으로·뒤로·촬영시작·랜덤채우기·비우기·SAVE·RETAKE), 카운트다운 5~1, 글꼴
   - `process_design()`: 이름순 마지막 파일을 cover(정확히 자름)/inside(비율 유지 축소)로 맞춰 `assets/`(`assets/ui/`)에 저장,
-    `assets/ui/manifest.json`에 `키: 경로?v=해시` 기록. 폴더가 비면 파일 삭제(=기본 모양). 시작화면은 비워도 유지
+    `assets/ui/manifest.json`에 `키: 경로?v=해시` 기록. 폴더가 비면 파일 삭제(=기본 모양). `제목_모드선택`은 v4.4부터 안 쓰임
   - 앱: `loadUI()` → `UI`, `applyUI()`가 manifest에 있는 요소만 교체(`.skin` = 배경 이미지 버튼, 글자 숨김).
     카운트다운은 `UI.count5..1`, 시트 배경은 `UI.sheet9/4`, 글꼴은 FontFace('BoothFont')
   - `assets/` 아래 디자인 파일은 자동 생성물 → 직접 올리지 말고 `디자인/`에
