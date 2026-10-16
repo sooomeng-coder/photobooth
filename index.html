@@ -510,9 +510,22 @@ function drawPersonIn(c, bx, deg, stretch) {
 function drawCopies(ctx, W, H, sw, sh) {
   if (!cropPerson(sw, sh)) return;
   const s = W / cur.W;
+  const stretch = cur.copiesFit === 'stretch';
   for (const p of cur.copies) {
+    if (p.center) {  // 비스듬한 획: 중심·길이(사람 키 방향)·굵기·각도
+      const cw = cropCanvas.width, ch = cropCanvas.height;
+      let kx = p.thick * s / cw, ky = p.len * s / ch;
+      if (!stretch) kx = ky = Math.min(kx, ky);
+      ctx.save();
+      ctx.translate(p.center[0] * s, p.center[1] * s);
+      ctx.rotate((p.rotate || 0) * Math.PI / 180);
+      ctx.scale(-kx, ky);
+      ctx.drawImage(cropCanvas, -cw / 2, -ch / 2);
+      ctx.restore();
+      continue;
+    }
     const [x, y, w, h] = p.box;
-    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, cur.copiesFit === 'stretch');
+    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch);
   }
 }
 
