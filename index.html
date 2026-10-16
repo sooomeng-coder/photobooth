@@ -613,6 +613,7 @@ function drawSoapBubble(ctx, cx, cy, r, skipLens) {
 
 // 비눗방울 프레임: 방울을 그리고, person 방울 안에는 사람(머리~허리)을 넣음 (예: 금붕어)
 const BUBBLE_TOP = 0.58;  // 사람 범위 중 위쪽 몇 %를 방울에 넣을지 (머리~허리)
+const bubbleCanvas = document.createElement('canvas'), bctx = bubbleCanvas.getContext('2d');
 function drawBubbles(ctx, W, H, sw, sh) {
   const s = W / cur.W;
   const has = sw && sh && maskReady && cropPerson(sw, sh);
@@ -620,21 +621,30 @@ function drawBubbles(ctx, W, H, sw, sh) {
   for (const b of cur.bubbles) {
     const cx = b.x * s, cy = b.y * s, r = b.r * s;
     if (b.person && has) {
-      const part = ch * BUBBLE_TOP, k = (r * 1.75) / part;  // 머리~허리가 지름의 88%쯤
-      ctx.save();
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
-      ctx.save();
-      ctx.translate(cx, cy - r * 0.82);
-      ctx.scale(-k, k);
-      if (cur.bubbleTone && 'filter' in ctx) ctx.filter = 'saturate(1.25) contrast(0.88) brightness(1.08)';  // 레트로 필름 색감
-      ctx.drawImage(cropCanvas, 0, 0, cw, Math.min(ch, part * 1.4), -cw / 2, 0, cw, Math.min(ch, part * 1.4));
-      ctx.restore();
-      if (cur.bubbleTone) {  // 푸른 기
-        ctx.globalCompositeOperation = 'soft-light';
-        ctx.fillStyle = 'rgba(70,130,235,.45)'; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
-        ctx.globalCompositeOperation = 'source-over';
+      // 가까이 와서 몸 아래가 화면 밖으로 잘렸으면 보이는 만큼 전부, 아니면 머리~허리
+      const cutBottom = personBox && personBox.y1 > 0.97;
+      const part = cutBottom ? ch : ch * BUBBLE_TOP, k = (r * 1.75) / part;
+      const d = Math.ceil(r * 2);
+      if (bubbleCanvas.width !== d || bubbleCanvas.height !== d) { bubbleCanvas.width = d; bubbleCanvas.height = d; }
+      bctx.globalCompositeOperation = 'source-over';
+      bctx.clearRect(0, 0, d, d);
+      bctx.save();
+      bctx.translate(r, r * 0.18);
+      bctx.scale(-k, k);
+      if (cur.bubbleTone && 'filter' in bctx) bctx.filter = 'saturate(1.25) contrast(0.88) brightness(1.08)';  // 레트로 필름 색감
+      bctx.drawImage(cropCanvas, -cw / 2, 0);  // 몸 전체를 그림 (중간에 가로로 잘리지 않게)
+      bctx.restore();
+      if (cur.bubbleTone) {  // 사람에만 푸른 기
+        bctx.globalCompositeOperation = 'source-atop';
+        bctx.fillStyle = 'rgba(70,130,235,.16)'; bctx.fillRect(0, 0, d, d);
       }
-      ctx.restore();
+      // 동그랗게: 가장자리로 갈수록 부드럽게 사라짐 → 화면 끝에서 잘린 네모 모서리가 안 보임
+      bctx.globalCompositeOperation = 'destination-in';
+      const g = bctx.createRadialGradient(r, r, r * 0.72, r, r, r * 0.99);
+      g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      bctx.fillStyle = g; bctx.fillRect(0, 0, d, d);
+      bctx.globalCompositeOperation = 'source-over';
+      ctx.drawImage(bubbleCanvas, cx - r, cy - r);
     }
     if (cur.bubbleImg) {  // 방울 그림 (사진) — 빈 방울은 뒤를 살짝 확대해 렌즈처럼
       if (!(b.person && has)) lensOnly(ctx, cx, cy, r);
