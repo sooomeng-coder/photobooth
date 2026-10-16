@@ -552,8 +552,8 @@ function drawFaceSpot(ctx, W, H, sw, sh) {
     fctx.save();
     fctx.translate(tw / 2, th / 2); fctx.scale(1, th / tw);
     const g1 = fctx.createRadialGradient(0, 0, 0, 0, 0, tw / 2);
-    g1.addColorStop(0, 'rgba(255,238,160,.22)'); g1.addColorStop(0.5, 'rgba(255,240,170,.32)');
-    g1.addColorStop(0.78, 'rgba(255,246,195,.7)'); g1.addColorStop(1, 'rgba(255,250,215,.95)');
+    g1.addColorStop(0, 'rgba(255,226,110,.42)'); g1.addColorStop(0.45, 'rgba(255,230,125,.55)');
+    g1.addColorStop(0.72, 'rgba(255,238,160,.85)'); g1.addColorStop(1, 'rgba(255,246,195,1)');
     fctx.fillStyle = g1; fctx.fillRect(-tw / 2, -tw / 2, tw, tw);
     fctx.restore();
   }
@@ -565,7 +565,9 @@ function drawFaceSpot(ctx, W, H, sw, sh) {
   g2.addColorStop(0.72, 'rgba(0,0,0,1)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
   fctx.fillStyle = g2; fctx.beginPath(); fctx.arc(0, 0, tw / 2, 0, Math.PI * 2); fctx.fill();
   fctx.restore();
+  ctx.globalAlpha = 0.8;  // 얼굴은 살짝 비치게 (뒤 햇빛이 보임)
   ctx.drawImage(faceCanvas, cx - tw / 2, cy - th / 2);
+  ctx.globalAlpha = 1;
 }
 
 function fitLiveCanvas() {
