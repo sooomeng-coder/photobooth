@@ -112,7 +112,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - **얼굴 자리 프레임 (v4.9)**: 폴더에 `face.json` `{"x","y","w","h","glow"}`(배경 좌표, 타원 중심·크기)가 있으면 가장 큰 얼굴을 머리째 타원으로 잘라 그 자리에 띄움
   (`frames.json`의 `faceSpot`). 코드: `drawFaceSpot()`, 머리 범위 `HEAD`(두 눈 가운데 기준 d 배수). 사람 오려내기(seg)는 안 돌림. 예: `frames/해 얼굴/`
 - **여러 명 프레임 (v4.10)**: 폴더에 `people.json` `{"fit":"stretch","copies":[{"box":[x,y,w,h],"rotate":0|-90}]}`(fit: stretch = box에 늘려 채움, 없으면 비율 유지)가 있으면 오려낸 사람을 자리마다 그림(`frames.json`의 `copies`).
-  코드: `cropPerson()`(사람 범위 잘라 마스크) → `drawPersonIn()`(돌려서 box에 contain, 거울) / `drawCopies()`. 비스듬한 획은 `{"center":[x,y],"len","thick","rotate"}`. 폴더의 `thumb.png` = 썸네일. 예: `frames/퇴근/`, `frames/퇴사/`
+  코드: `cropPerson()`(사람 범위 잘라 마스크) → `drawPersonIn()`(돌려서 box에 contain, 거울) / `drawCopies()`. 비스듬한 획은 `{"center":[x,y],"len","thick","rotate"}`. 폴더의 `thumb.png` = 썸네일. 예: `frames/퇴근/`, `frames/퇴사/`, `frames/자퇴/`
 - 테스트: Chromium `--use-file-for-fake-video-capture=파일.y4m`로 얼굴이 나오는 영상을 가짜 카메라로 쓸 수 있음
 
 ### 업로드 폴더 (사용자가 GitHub 웹에서 올리는 곳) — 저장소 첫 화면 `README.md`에 표로 정리
