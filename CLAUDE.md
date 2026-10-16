@@ -114,7 +114,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - **여러 명 프레임 (v4.10)**: 폴더에 `people.json` `{"fit":"stretch","copies":[{"box":[x,y,w,h],"rotate":0|-90}]}`(fit: stretch = box에 늘려 채움, 없으면 비율 유지)가 있으면 오려낸 사람을 자리마다 그림(`frames.json`의 `copies`).
   코드: `cropPerson()`(사람 범위 잘라 마스크) → `drawPersonIn()`(돌려서 box에 contain, 거울) / `drawCopies()`. 비스듬한 획은 `{"center":[x,y],"len","thick","rotate"}`. 폴더의 `thumb.png` = 썸네일. 예: `frames/퇴근/`, `frames/퇴사/`, `frames/자퇴/`
 - **비눗방울 프레임 (v4.11)**: 폴더에 `bubbles.json` `{"bubbles":[{"x","y","r","person"}]}`가 있으면 방울을 그리고 person 방울에 사람 머리~허리(`BUBBLE_TOP`)를 넣음(`frames.json`의 `bubbles`).
-  코드: `drawBubbles()`(cropPerson 재사용). 금붕어는 `frame.png`(흰 바탕 → 투명 변환해서 올림). 예: `frames/금붕어/`, `frames/금붕어 세로/`
+  코드: `drawBubbles()`(cropPerson 재사용), `drawSoapBubble()`/`lensOnly()`, `drawGrain()`. `tone`·`grain`·폴더 `bubble.png` 옵션. 금붕어는 `frame.png`(흰 바탕 → 투명 변환해서 올림). 예: `frames/금붕어/`, `frames/금붕어 세로/`
 - 테스트: Chromium `--use-file-for-fake-video-capture=파일.y4m`로 얼굴이 나오는 영상을 가짜 카메라로 쓸 수 있음
 
 ### 업로드 폴더 (사용자가 GitHub 웹에서 올리는 곳) — 저장소 첫 화면 `README.md`에 표로 정리

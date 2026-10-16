@@ -469,6 +469,7 @@ function compose(ctx, W, H) {
     drawMirroredCover(ctx, video, sw, sh, 0, 0, W, H);
   }
   if (cur.overlay) ctx.drawImage(cur.overlay, 0, 0, W, H);
+  if (cur.bubbleGrain) drawGrain(ctx, W, H, cur.bubbleGrain);
   if (cur.stickers && sw && sh) drawStickers(ctx, W, H, sw, sh);
 }
 
@@ -528,6 +529,33 @@ function drawCopies(ctx, W, H, sw, sh) {
     const [x, y, w, h] = p.box;
     drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch);
   }
+}
+
+function lensOnly(ctx, cx, cy, r) {
+  const d = Math.ceil(r * 2);
+  if (d < 8) return;
+  if (lensCanvas.width !== d || lensCanvas.height !== d) { lensCanvas.width = d; lensCanvas.height = d; }
+  lnctx.clearRect(0, 0, d, d);
+  lnctx.drawImage(ctx.canvas, cx - r, cy - r, d, d, 0, 0, d, d);
+  ctx.save();
+  ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+  ctx.drawImage(lensCanvas, cx - r * 1.1, cy - r * 1.1, d * 1.1, d * 1.1);
+  ctx.restore();
+}
+// 필름 입자: 작은 노이즈 타일을 한 번 만들어 반복해서 덮음
+let grainPattern = null;
+function drawGrain(ctx, W, H, amt) {
+  if (!grainPattern) {
+    const t = document.createElement('canvas'); t.width = t.height = 160;
+    const g = t.getContext('2d'), im = g.createImageData(160, 160);
+    for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 255; im.data[i] = im.data[i + 1] = im.data[i + 2] = v; im.data[i + 3] = 255; }
+    g.putImageData(im, 0, 0);
+    grainPattern = ctx.createPattern(t, 'repeat');
+  }
+  ctx.save();
+  ctx.globalAlpha = amt; ctx.globalCompositeOperation = 'overlay';
+  ctx.fillStyle = grainPattern; ctx.fillRect(0, 0, W, H);
+  ctx.restore();
 }
 
 // 진짜 비눗방울처럼: 속은 거의 투명 + 렌즈처럼 살짝 확대 + 무지갯빛 얇은 막 + 창문 모양 반사
@@ -595,12 +623,23 @@ function drawBubbles(ctx, W, H, sw, sh) {
       const part = ch * BUBBLE_TOP, k = (r * 1.75) / part;  // 머리~허리가 지름의 88%쯤
       ctx.save();
       ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+      ctx.save();
       ctx.translate(cx, cy - r * 0.82);
       ctx.scale(-k, k);
+      if (cur.bubbleTone && 'filter' in ctx) ctx.filter = 'saturate(1.25) contrast(0.88) brightness(1.08)';  // 레트로 필름 색감
       ctx.drawImage(cropCanvas, 0, 0, cw, Math.min(ch, part * 1.4), -cw / 2, 0, cw, Math.min(ch, part * 1.4));
       ctx.restore();
+      if (cur.bubbleTone) {  // 푸른 기
+        ctx.globalCompositeOperation = 'soft-light';
+        ctx.fillStyle = 'rgba(70,130,235,.45)'; ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.restore();
     }
-    drawSoapBubble(ctx, cx, cy, r, b.person && has);
+    if (cur.bubbleImg) {  // 방울 그림 (사진) — 빈 방울은 뒤를 살짝 확대해 렌즈처럼
+      if (!(b.person && has)) lensOnly(ctx, cx, cy, r);
+      ctx.drawImage(cur.bubbleImg, cx - r, cy - r, r * 2, r * 2);
+    } else drawSoapBubble(ctx, cx, cy, r, b.person && has);
   }
 }
 
@@ -971,10 +1010,11 @@ async function prepareStatic(f) {
 
 async function prepareLive(f) {
   loadVision().catch(() => {});  // 이미지 받는 동안 같이 준비
-  const [bg, fr, slot, ...st] = await Promise.all([
+  const [bg, fr, slot, bubbleImg, ...st] = await Promise.all([
     f.background ? loadImg(f.background) : null,
     f.src ? loadImg(f.src) : null,
     f.slot ? loadImg(f.slot) : null,
+    f.bubbleImg ? loadImg(f.bubbleImg) : null,
     ...Object.values(f.stickers || {}).map(loadImg),
   ]);
   const names = Object.keys(f.stickers || {});
@@ -993,7 +1033,8 @@ async function prepareLive(f) {
   }
   return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
     stickers: stickerList.length > 0, stickerList,
-    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null, copiesFit: f.copiesFit || 'contain', bubbles: Array.isArray(f.bubbles) && f.bubbles.length ? f.bubbles : null };
+    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null, copiesFit: f.copiesFit || 'contain', bubbles: Array.isArray(f.bubbles) && f.bubbles.length ? f.bubbles : null,
+    bubbleImg, bubbleTone: !!f.bubbleTone, bubbleGrain: f.bubbleGrain || 0 };
 }
 
 // 이미지에서 불투명한 부분이 차지하는 범위 (W×H 좌표)

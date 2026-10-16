@@ -334,7 +334,14 @@ def process_live(folder, old):
     # {"bubbles": [{"x": 중심x, "y": 중심y, "r": 반지름, "person": true}, ...]} (배경 좌표)
     bj = folder / 'bubbles.json'
     if bj.exists():
-        entry['bubbles'] = json.loads(bj.read_text(encoding='utf-8')).get('bubbles', [])
+        opt = json.loads(bj.read_text(encoding='utf-8'))
+        entry['bubbles'] = opt.get('bubbles', [])
+        for k in ('grain', 'tone'):  # grain: 필름 입자 세기(0~1), tone: 방울 속 사람 레트로 색감
+            if k in opt:
+                entry['bubble' + k.capitalize()] = opt[k]
+        bp = find(folder, 'bubble')  # bubble.png: 방울 그림 (없으면 코드로 그림)
+        if bp:
+            entry['bubbleImg'] = rel(bp)
 
     stickers = {}
     for k in STICKERS:
