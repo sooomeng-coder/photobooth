@@ -530,6 +530,59 @@ function drawCopies(ctx, W, H, sw, sh) {
   }
 }
 
+// 진짜 비눗방울처럼: 속은 거의 투명 + 렌즈처럼 살짝 확대 + 무지갯빛 얇은 막 + 창문 모양 반사
+const lensCanvas = document.createElement('canvas'), lnctx = lensCanvas.getContext('2d');
+function drawSoapBubble(ctx, cx, cy, r, skipLens) {
+  const d = Math.ceil(r * 2);
+  // 1) 렌즈: 뒤에 있는 그림을 가장자리 쪽만 살짝 확대해서 굴절처럼 (사람이 든 방울은 생략)
+  if (!skipLens && d > 8) {
+    if (lensCanvas.width !== d || lensCanvas.height !== d) { lensCanvas.width = d; lensCanvas.height = d; }
+    lnctx.clearRect(0, 0, d, d);
+    lnctx.drawImage(ctx.canvas, cx - r, cy - r, d, d, 0, 0, d, d);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+    const z = 1.12;
+    ctx.globalAlpha = 0.9;
+    ctx.drawImage(lensCanvas, cx - r * z, cy - r * z, d * z, d * z);
+    ctx.restore();
+  }
+  ctx.save();
+  // 2) 가장자리만 하얗게 (속은 투명)
+  const f = ctx.createRadialGradient(cx, cy, r * 0.7, cx, cy, r);
+  f.addColorStop(0, 'rgba(255,255,255,0)'); f.addColorStop(0.82, 'rgba(255,255,255,.05)'); f.addColorStop(1, 'rgba(255,255,255,.42)');
+  ctx.fillStyle = f; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+  // 3) 무지갯빛 막 (얇은 띠)
+  ctx.globalCompositeOperation = 'screen';
+  const w = Math.max(2, r * 0.07);
+  let rim;
+  if (ctx.createConicGradient) {
+    rim = ctx.createConicGradient(-0.6, cx, cy);
+    const cols = ['rgba(255,80,200,.55)', 'rgba(255,220,90,.45)', 'rgba(90,255,180,.4)', 'rgba(80,170,255,.55)', 'rgba(190,90,255,.5)', 'rgba(255,80,200,.55)'];
+    cols.forEach((c, i) => rim.addColorStop(i / (cols.length - 1), c));
+  } else {
+    rim = ctx.createLinearGradient(cx - r, cy - r, cx + r, cy + r);
+    rim.addColorStop(0, 'rgba(255,80,200,.5)'); rim.addColorStop(0.5, 'rgba(90,255,180,.4)'); rim.addColorStop(1, 'rgba(80,170,255,.5)');
+  }
+  ctx.strokeStyle = rim; ctx.lineWidth = w;
+  ctx.beginPath(); ctx.arc(cx, cy, r - w / 2, 0, Math.PI * 2); ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+  // 4) 얇은 테두리
+  ctx.lineWidth = Math.max(1, r * 0.012); ctx.strokeStyle = 'rgba(255,255,255,.7)';
+  ctx.beginPath(); ctx.arc(cx, cy, r - ctx.lineWidth / 2, 0, Math.PI * 2); ctx.stroke();
+  // 5) 창문 모양 반사 (왼쪽 위) + 작은 반사 (오른쪽 아래)
+  ctx.save();
+  ctx.translate(cx - r * 0.38, cy - r * 0.42); ctx.rotate(-0.75);
+  const hw = r * 0.42, hh = r * 0.2;
+  const hg = ctx.createLinearGradient(0, -hh, 0, hh);
+  hg.addColorStop(0, 'rgba(255,255,255,.95)'); hg.addColorStop(1, 'rgba(255,255,255,.25)');
+  ctx.fillStyle = hg; ctx.beginPath(); ctx.ellipse(0, 0, hw, hh, 0, Math.PI, Math.PI * 2); ctx.fill();  // 위쪽 반달
+  ctx.restore();
+  const g2 = ctx.createRadialGradient(cx + r * 0.52, cy + r * 0.5, 0, cx + r * 0.52, cy + r * 0.5, r * 0.16);
+  g2.addColorStop(0, 'rgba(255,255,255,.85)'); g2.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = g2; ctx.beginPath(); ctx.arc(cx + r * 0.52, cy + r * 0.5, r * 0.16, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
 // 비눗방울 프레임: 방울을 그리고, person 방울 안에는 사람(머리~허리)을 넣음 (예: 금붕어)
 const BUBBLE_TOP = 0.58;  // 사람 범위 중 위쪽 몇 %를 방울에 넣을지 (머리~허리)
 function drawBubbles(ctx, W, H, sw, sh) {
@@ -547,19 +600,7 @@ function drawBubbles(ctx, W, H, sw, sh) {
       ctx.drawImage(cropCanvas, 0, 0, cw, Math.min(ch, part * 1.4), -cw / 2, 0, cw, Math.min(ch, part * 1.4));
       ctx.restore();
     }
-    // 방울: 가장자리로 갈수록 뿌옇게 + 테두리 + 반짝임
-    ctx.save();
-    const g = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
-    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.8, 'rgba(225,240,255,.18)'); g.addColorStop(1, 'rgba(255,255,255,.55)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    ctx.lineWidth = Math.max(1.5, r * 0.02); ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.stroke();
-    const h = ctx.createRadialGradient(cx - r * 0.42, cy - r * 0.45, 0, cx - r * 0.42, cy - r * 0.45, r * 0.38);
-    h.addColorStop(0, 'rgba(255,255,255,.9)'); h.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = h; ctx.beginPath(); ctx.ellipse(cx - r * 0.42, cy - r * 0.45, r * 0.38, r * 0.26, -0.7, 0, Math.PI * 2); ctx.fill();
-    const h2 = ctx.createRadialGradient(cx + r * 0.5, cy + r * 0.52, 0, cx + r * 0.5, cy + r * 0.52, r * 0.14);
-    h2.addColorStop(0, 'rgba(255,255,255,.7)'); h2.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = h2; ctx.beginPath(); ctx.arc(cx + r * 0.5, cy + r * 0.52, r * 0.14, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    drawSoapBubble(ctx, cx, cy, r, b.person && has);
   }
 }
 
