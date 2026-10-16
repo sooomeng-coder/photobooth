@@ -339,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.10';
+const APP_VERSION = 'v4.11';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -454,6 +454,7 @@ function compose(ctx, W, H) {
     if (cur.faceSpot) { drawFaceSpot(ctx, W, H, sw, sh); }
     else if (cur.slot) { if (sw && sh && maskReady) drawSlot(ctx, W, H, sw, sh); }
     else if (cur.copies) { if (sw && sh && maskReady) drawCopies(ctx, W, H, sw, sh); }
+    else if (cur.bubbles) { drawBubbles(ctx, W, H, sw, sh); }
     else if (sw && sh && maskReady) {
       if (personCanvas.width !== W || personCanvas.height !== H) { personCanvas.width = W; personCanvas.height = H; }
       pctx.globalCompositeOperation = 'source-over';
@@ -526,6 +527,39 @@ function drawCopies(ctx, W, H, sw, sh) {
     }
     const [x, y, w, h] = p.box;
     drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch);
+  }
+}
+
+// 비눗방울 프레임: 방울을 그리고, person 방울 안에는 사람(머리~허리)을 넣음 (예: 금붕어)
+const BUBBLE_TOP = 0.58;  // 사람 범위 중 위쪽 몇 %를 방울에 넣을지 (머리~허리)
+function drawBubbles(ctx, W, H, sw, sh) {
+  const s = W / cur.W;
+  const has = sw && sh && maskReady && cropPerson(sw, sh);
+  const cw = cropCanvas.width, ch = cropCanvas.height;
+  for (const b of cur.bubbles) {
+    const cx = b.x * s, cy = b.y * s, r = b.r * s;
+    if (b.person && has) {
+      const part = ch * BUBBLE_TOP, k = (r * 1.75) / part;  // 머리~허리가 지름의 88%쯤
+      ctx.save();
+      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.clip();
+      ctx.translate(cx, cy - r * 0.82);
+      ctx.scale(-k, k);
+      ctx.drawImage(cropCanvas, 0, 0, cw, Math.min(ch, part * 1.4), -cw / 2, 0, cw, Math.min(ch, part * 1.4));
+      ctx.restore();
+    }
+    // 방울: 가장자리로 갈수록 뿌옇게 + 테두리 + 반짝임
+    ctx.save();
+    const g = ctx.createRadialGradient(cx, cy, r * 0.55, cx, cy, r);
+    g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.8, 'rgba(225,240,255,.18)'); g.addColorStop(1, 'rgba(255,255,255,.55)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = Math.max(1.5, r * 0.02); ctx.strokeStyle = 'rgba(255,255,255,.75)'; ctx.stroke();
+    const h = ctx.createRadialGradient(cx - r * 0.42, cy - r * 0.45, 0, cx - r * 0.42, cy - r * 0.45, r * 0.38);
+    h.addColorStop(0, 'rgba(255,255,255,.9)'); h.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = h; ctx.beginPath(); ctx.ellipse(cx - r * 0.42, cy - r * 0.45, r * 0.38, r * 0.26, -0.7, 0, Math.PI * 2); ctx.fill();
+    const h2 = ctx.createRadialGradient(cx + r * 0.5, cy + r * 0.52, 0, cx + r * 0.5, cy + r * 0.52, r * 0.14);
+    h2.addColorStop(0, 'rgba(255,255,255,.7)'); h2.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = h2; ctx.beginPath(); ctx.arc(cx + r * 0.5, cy + r * 0.52, r * 0.14, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -918,7 +952,7 @@ async function prepareLive(f) {
   }
   return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
     stickers: stickerList.length > 0, stickerList,
-    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null, copiesFit: f.copiesFit || 'contain' };
+    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null, copiesFit: f.copiesFit || 'contain', bubbles: Array.isArray(f.bubbles) && f.bubbles.length ? f.bubbles : null };
 }
 
 // 이미지에서 불투명한 부분이 차지하는 범위 (W×H 좌표)

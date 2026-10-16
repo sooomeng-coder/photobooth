@@ -330,6 +330,12 @@ def process_live(folder, old):
         if opt.get('fit'):  # "stretch" = box에 딱 맞게 늘림
             entry['copiesFit'] = opt['fit']
 
+    # bubbles.json: 비눗방울 프레임 — 동그란 방울을 그리고, person: true인 방울 안에는 오려낸 사람(머리~허리)을 넣음
+    # {"bubbles": [{"x": 중심x, "y": 중심y, "r": 반지름, "person": true}, ...]} (배경 좌표)
+    bj = folder / 'bubbles.json'
+    if bj.exists():
+        entry['bubbles'] = json.loads(bj.read_text(encoding='utf-8')).get('bubbles', [])
+
     stickers = {}
     for k in STICKERS:
         p = find(folder, k)
