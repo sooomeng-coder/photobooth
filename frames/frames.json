@@ -9,5 +9,6 @@
   {"name": "FRAME 8", "src": "frames/frame8.png", "thumb": "frames/thumbs/frame8.jpg"},
   {"name": "FRAME 9", "src": "frames/frame9.png", "thumb": "frames/thumbs/frame9.jpg"},
   {"name": "눈물", "dir": "frames/눈물", "live": true, "background": "frames/눈물/background.jpg", "width": 1640, "height": 2360, "stickers": {"eye-left": "frames/눈물/eye-left.png", "eye-right": "frames/눈물/eye-right.png"}, "thumb": "frames/thumbs/눈물.jpg"},
-  {"name": "사랑니", "dir": "frames/사랑니", "live": true, "background": "frames/사랑니/background.jpg", "width": 2360, "height": 1640, "slot": "frames/사랑니/slot.png", "slotRotate": -90, "slotBox": [1259, 883, 983, 387], "thumb": "frames/thumbs/사랑니.jpg"}
+  {"name": "사랑니", "dir": "frames/사랑니", "live": true, "background": "frames/사랑니/background.jpg", "width": 2360, "height": 1640, "slot": "frames/사랑니/slot.png", "slotRotate": -90, "slotBox": [1259, 883, 983, 387], "thumb": "frames/thumbs/사랑니.jpg"},
+  {"name": "해 얼굴", "dir": "frames/해 얼굴", "live": true, "background": "frames/해 얼굴/background.jpg", "width": 2360, "height": 1640, "faceSpot": {"x": 600, "y": 500, "w": 640, "h": 860, "glow": true}, "thumb": "frames/thumbs/해 얼굴.jpg"}
 ]

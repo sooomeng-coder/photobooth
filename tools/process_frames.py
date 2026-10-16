@@ -315,6 +315,12 @@ def process_live(folder, old):
             if 'box' in opt:
                 entry['slotBox'] = opt['box']
 
+    # face.json: 얼굴 자리 프레임 — 가장 큰 얼굴을 머리째 잘라 이 타원 자리에 크게 띄움
+    # {"x": 중심x, "y": 중심y, "w": 타원 가로, "h": 타원 세로, "glow": true} (배경 좌표)
+    fj = folder / 'face.json'
+    if fj.exists():
+        entry['faceSpot'] = json.loads(fj.read_text(encoding='utf-8'))
+
     stickers = {}
     for k in STICKERS:
         p = find(folder, k)

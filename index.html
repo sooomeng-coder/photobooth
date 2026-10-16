@@ -339,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.8';
+const APP_VERSION = 'v4.9';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -451,7 +451,8 @@ function compose(ctx, W, H) {
   if (cur.bg) {
     // 배경 → 사람만 오려서 위에 (마스크가 아직 없으면 배경만)
     ctx.drawImage(cur.bg, 0, 0, W, H);
-    if (cur.slot) { if (sw && sh && maskReady) drawSlot(ctx, W, H, sw, sh); }
+    if (cur.faceSpot) { drawFaceSpot(ctx, W, H, sw, sh); }
+    else if (cur.slot) { if (sw && sh && maskReady) drawSlot(ctx, W, H, sw, sh); }
     else if (sw && sh && maskReady) {
       if (personCanvas.width !== W || personCanvas.height !== H) { personCanvas.width = W; personCanvas.height = H; }
       pctx.globalCompositeOperation = 'source-over';
@@ -504,6 +505,56 @@ function drawSlot(ctx, W, H, sw, sh) {
   pctx.globalCompositeOperation = 'destination-in';
   pctx.drawImage(cur.slot, 0, 0, W, H);
   ctx.drawImage(personCanvas, 0, 0);
+}
+
+// 얼굴 자리 프레임: 가장 큰 얼굴 하나를 머리째 타원으로 잘라 정해진 자리(faceSpot)에 크게 띄움 (예: 하늘에 뜬 해 얼굴)
+// faceSpot = { x, y: 타원 중심, w, h: 타원 크기 (배경 좌표), glow: 뒤에 빛 번짐 }
+const faceCanvas = document.createElement('canvas'), fctx = faceCanvas.getContext('2d');
+const HEAD = { down: 0.1, rx: 1.45, ry: 1.95 };  // 두 눈 가운데 기준 머리 타원 (d = 두 눈 사이 거리 배수)
+function drawFaceSpot(ctx, W, H, sw, sh) {
+  const sp = cur.faceSpot, s = W / cur.W;
+  const cx = sp.x * s, cy = sp.y * s, tw = Math.round(sp.w * s), th = Math.round(sp.h * s);
+  if (sp.glow !== false) {  // 해처럼 빛 번짐
+    ctx.save();
+    ctx.translate(cx, cy); ctx.scale(1, th / tw);
+    const r = tw * 0.95, g = ctx.createRadialGradient(0, 0, r * 0.35, 0, 0, r);
+    g.addColorStop(0, 'rgba(255,252,220,.95)'); g.addColorStop(0.55, 'rgba(255,246,190,.7)'); g.addColorStop(1, 'rgba(255,246,190,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+  if (!sw || !sh || !tracks.length) return;
+  // 가장 큰 얼굴 (영상 픽셀 좌표, 좌우반전 전)
+  let best = null, bd = 0;
+  for (const t of tracks) {
+    let a = { x: t.e1.x * sw, y: t.e1.y * sh }, b = { x: t.e2.x * sw, y: t.e2.y * sh };
+    if (a.x > b.x) [a, b] = [b, a];
+    const d = Math.hypot(b.x - a.x, b.y - a.y);
+    if (d > bd) { bd = d; best = { a, b, d }; }
+  }
+  if (!best || best.d < 4) return;
+  const ang = Math.atan2(best.b.y - best.a.y, best.b.x - best.a.x);
+  const m = mid(best.a, best.b);
+  const c = { x: m.x - Math.sin(ang) * HEAD.down * best.d, y: m.y + Math.cos(ang) * HEAD.down * best.d };
+  const rx = HEAD.rx * best.d, ry = HEAD.ry * best.d;
+  if (faceCanvas.width !== tw || faceCanvas.height !== th) { faceCanvas.width = tw; faceCanvas.height = th; }
+  fctx.globalCompositeOperation = 'source-over';
+  fctx.clearRect(0, 0, tw, th);
+  fctx.save();
+  fctx.translate(tw / 2, th / 2);
+  fctx.scale(-tw / (2 * rx), th / (2 * ry));  // 거울(좌우반전) + 크기 맞춤
+  fctx.rotate(-ang);                           // 고개 기울기 바로 세우기
+  fctx.translate(-c.x, -c.y);
+  fctx.drawImage(video, 0, 0, sw, sh);
+  fctx.restore();
+  // 가장자리 부드럽게 (타원)
+  fctx.globalCompositeOperation = 'destination-in';
+  fctx.save();
+  fctx.translate(tw / 2, th / 2); fctx.scale(1, th / tw);
+  const g2 = fctx.createRadialGradient(0, 0, 0, 0, 0, tw / 2);
+  g2.addColorStop(0.72, 'rgba(0,0,0,1)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
+  fctx.fillStyle = g2; fctx.beginPath(); fctx.arc(0, 0, tw / 2, 0, Math.PI * 2); fctx.fill();
+  fctx.restore();
+  ctx.drawImage(faceCanvas, cx - tw / 2, cy - th / 2);
 }
 
 function fitLiveCanvas() {
@@ -589,8 +640,8 @@ function infer(now) {
   if (inferCanvas.width !== w || inferCanvas.height !== h) { inferCanvas.width = w; inferCanvas.height = h; }
   ictx.drawImage(video, 0, 0, w, h);
   try {
-    if (cur.stickers) updateTracks(vision.face.detectForVideo(inferCanvas, ts).detections, now);
-    if (cur.bg) vision.seg.segmentForVideo(inferCanvas, ts, r => updateMask(r.confidenceMasks && r.confidenceMasks[0]));
+    if (cur.stickers || cur.faceSpot) updateTracks(vision.face.detectForVideo(inferCanvas, ts).detections, now);
+    if (cur.bg && !cur.faceSpot) vision.seg.segmentForVideo(inferCanvas, ts, r => updateMask(r.confidenceMasks && r.confidenceMasks[0]));
   } catch (e) { console.warn('인식 오류', e); }
 }
 
@@ -810,7 +861,7 @@ async function prepareLive(f) {
   }
   return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
     stickers: stickerList.length > 0, stickerList,
-    slot, slotBox, slotRotate: f.slotRotate || 0 };
+    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null };
 }
 
 // 이미지에서 불투명한 부분이 차지하는 범위 (W×H 좌표)
