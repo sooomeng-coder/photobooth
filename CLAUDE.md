@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.5) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.8) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -106,6 +106,9 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
   - 인식은 영상을 가로 640px로 줄여 45ms 간격으로, 화면은 매 프레임. 얼굴 위치는 부드럽게(SMOOTH) + 잠깐 놓쳐도 400ms 유지
   - GPU 사용 실패 시 CPU로 자동 전환
 - 지금 프레임: `눈물` — 하늘 배경(`2.jpg` 9:16 → 1640×2360 크롭) + 눈물 도트(`eye-left/right.png`, Claude가 그림, 레퍼런스: 눈 아래로 하늘색 도트 두 줄)
+- **슬롯 프레임 (v4.8)**: 폴더에 `slot.png`(배경과 같은 크기, 불투명 = 사람 자리)가 있으면 오려낸 사람 전신을 잘라 그 모양 안에만 넣음.
+  `slot.json` `{"rotate": -90, "box": [x,y,w,h]}`(선택) → 처리 스크립트가 `frames.json`에 `slot`, `slotRotate`, `slotBox`로 기록.
+  코드: `updateMask()`가 `personBox`(사람 범위) 계산, `drawSlot()`이 잘라서 돌리고 box에 맞춰 넣은 뒤 slot으로 자름, `alphaBox()`. 예: `frames/사랑니/`
 - 테스트: Chromium `--use-file-for-fake-video-capture=파일.y4m`로 얼굴이 나오는 영상을 가짜 카메라로 쓸 수 있음
 
 ### 업로드 폴더 (사용자가 GitHub 웹에서 올리는 곳) — 저장소 첫 화면 `README.md`에 표로 정리

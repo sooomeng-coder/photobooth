@@ -339,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.7';
+const APP_VERSION = 'v4.8';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -451,7 +451,8 @@ function compose(ctx, W, H) {
   if (cur.bg) {
     // 배경 → 사람만 오려서 위에 (마스크가 아직 없으면 배경만)
     ctx.drawImage(cur.bg, 0, 0, W, H);
-    if (sw && sh && maskReady) {
+    if (cur.slot) { if (sw && sh && maskReady) drawSlot(ctx, W, H, sw, sh); }
+    else if (sw && sh && maskReady) {
       if (personCanvas.width !== W || personCanvas.height !== H) { personCanvas.width = W; personCanvas.height = H; }
       pctx.globalCompositeOperation = 'source-over';
       pctx.clearRect(0, 0, W, H);
@@ -466,6 +467,43 @@ function compose(ctx, W, H) {
   }
   if (cur.overlay) ctx.drawImage(cur.overlay, 0, 0, W, H);
   if (cur.stickers && sw && sh) drawStickers(ctx, W, H, sw, sh);
+}
+
+// 슬롯 프레임: 오려낸 사람(전신)을 잘라서 돌린 뒤 slot 모양 안에 맞춰 넣음 (예: 사랑니 속에 누운 사람)
+const cropCanvas = document.createElement('canvas'), cctx = cropCanvas.getContext('2d');
+function drawSlot(ctx, W, H, sw, sh) {
+  const b = personBox;
+  if (!b) return;
+  // 1) 영상에서 사람 범위만 잘라 + 마스크 적용 (여유 3%)
+  const px = Math.max(0, b.x0 - 0.03), py = Math.max(0, b.y0 - 0.03);
+  const pw = Math.min(1, b.x1 + 0.03) - px, ph = Math.min(1, b.y1 + 0.03) - py;
+  const k = Math.min(1, 900 / Math.max(pw * sw, ph * sh));  // 속도 위해 긴 변 900px까지만
+  const cw = Math.max(1, Math.round(pw * sw * k)), ch = Math.max(1, Math.round(ph * sh * k));
+  if (cropCanvas.width !== cw || cropCanvas.height !== ch) { cropCanvas.width = cw; cropCanvas.height = ch; }
+  cctx.globalCompositeOperation = 'source-over';
+  cctx.clearRect(0, 0, cw, ch);
+  cctx.drawImage(video, px * sw, py * sh, pw * sw, ph * sh, 0, 0, cw, ch);
+  cctx.globalCompositeOperation = 'destination-in';
+  const mw = maskCanvas.width, mh = maskCanvas.height;
+  cctx.drawImage(maskCanvas, px * mw, py * mh, pw * mw, ph * mh, 0, 0, cw, ch);
+
+  // 2) 돌려서 box 안에 꽉 차게(비율 유지) 넣고, slot 모양으로 자름
+  const s = W / cur.W, bx = cur.slotBox;
+  const rot = (cur.slotRotate || 0) * Math.PI / 180, side = Math.abs(Math.sin(rot)) > 0.5;
+  const rw = side ? ch : cw, rh = side ? cw : ch;  // 돌린 뒤 크기
+  const sc = Math.min(bx.w * s / rw, bx.h * s / rh);
+  if (personCanvas.width !== W || personCanvas.height !== H) { personCanvas.width = W; personCanvas.height = H; }
+  pctx.globalCompositeOperation = 'source-over';
+  pctx.clearRect(0, 0, W, H);
+  pctx.save();
+  pctx.translate((bx.x + bx.w / 2) * s, (bx.y + bx.h / 2) * s);
+  pctx.rotate(rot);
+  pctx.scale(-sc, sc);  // 거울처럼 좌우반전 (다른 프레임과 같게)
+  pctx.drawImage(cropCanvas, -cw / 2, -ch / 2);
+  pctx.restore();
+  pctx.globalCompositeOperation = 'destination-in';
+  pctx.drawImage(cur.slot, 0, 0, W, H);
+  ctx.drawImage(personCanvas, 0, 0);
 }
 
 function fitLiveCanvas() {
@@ -538,10 +576,10 @@ function loadVision() {
 const inferCanvas = document.createElement('canvas');
 const ictx = inferCanvas.getContext('2d', { willReadFrequently: true });
 const maskCanvas = document.createElement('canvas'), mctx = maskCanvas.getContext('2d');
-let maskData = null, maskReady = false, lastInfer = 0, lastTs = 0;
+let maskData = null, maskReady = false, lastInfer = 0, lastTs = 0, personBox = null;
 let tracks = [];  // 영상 좌표(0~1, 좌우반전 전)로 저장한 얼굴들
 
-function resetVisionState() { maskReady = false; tracks = []; }
+function resetVisionState() { maskReady = false; tracks = []; personBox = null; }
 
 function infer(now) {
   if (!vision || !video.videoWidth || now - lastInfer < VISION.INFER_MS) return;
@@ -562,12 +600,20 @@ function updateMask(mask) {
   if (maskCanvas.width !== w || maskCanvas.height !== h) { maskCanvas.width = w; maskCanvas.height = h; maskData = null; }
   if (!maskData) { maskData = mctx.createImageData(w, h); maskData.data.fill(255); }
   const d = maskData.data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1, n = 0;
   for (let i = 0, j = 3; i < conf.length; i++, j += 4) {
     const a = (conf[i] - 0.35) * 3.3;  // 0.35~0.65 사이를 부드러운 경계로
     d[j] = a <= 0 ? 0 : a >= 1 ? 255 : a * 255;
+    if (a >= 0.5) { const x = i % w, y = (i / w) | 0; n++; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
   }
   mctx.putImageData(maskData, 0, 0);
   maskReady = true;
+  // 사람이 있는 범위(0~1, 좌우반전 전). 슬롯 프레임이 사람을 잘라 옮길 때 씀. 흔들림 줄이려고 부드럽게
+  if (n > w * h * 0.004) {
+    const b = { x0: x0 / w, y0: y0 / h, x1: (x1 + 1) / w, y1: (y1 + 1) / h };
+    if (!personBox) personBox = b;
+    else for (const k in b) personBox[k] += (b[k] - personBox[k]) * 0.4;
+  } else personBox = null;
 }
 
 function updateTracks(dets, now) {
@@ -742,9 +788,10 @@ async function prepareStatic(f) {
 
 async function prepareLive(f) {
   loadVision().catch(() => {});  // 이미지 받는 동안 같이 준비
-  const [bg, fr, ...st] = await Promise.all([
+  const [bg, fr, slot, ...st] = await Promise.all([
     f.background ? loadImg(f.background) : null,
     f.src ? loadImg(f.src) : null,
+    f.slot ? loadImg(f.slot) : null,
     ...Object.values(f.stickers || {}).map(loadImg),
   ]);
   const names = Object.keys(f.stickers || {});
@@ -756,8 +803,31 @@ async function prepareLive(f) {
   const stickerList = Object.entries(byName).filter(([n]) => ANCHORS[n]);
   const W = fr ? fr.naturalWidth : f.width || (bg && bg.naturalWidth) || 1640;
   const H = fr ? fr.naturalHeight : f.height || (bg && bg.naturalHeight) || 2360;
+  let slotBox = null;
+  if (slot) {
+    const b = f.slotBox;
+    slotBox = Array.isArray(b) && b.length === 4 ? { x: b[0], y: b[1], w: b[2], h: b[3] } : alphaBox(slot, W, H);
+  }
   return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
-    stickers: stickerList.length > 0, stickerList };
+    stickers: stickerList.length > 0, stickerList,
+    slot, slotBox, slotRotate: f.slotRotate || 0 };
+}
+
+// 이미지에서 불투명한 부분이 차지하는 범위 (W×H 좌표)
+function alphaBox(img, W, H) {
+  const c = document.createElement('canvas'), w = 400, h = Math.max(1, Math.round(400 * H / W));
+  c.width = w; c.height = h;
+  const x = c.getContext('2d'); x.drawImage(img, 0, 0, w, h);
+  const p = x.getImageData(0, 0, w, h).data;
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for (let i = 3, n = 0; i < p.length; i += 4, n++) {
+    if (p[i] < 128) continue;
+    const xx = n % w, yy = (n / w) | 0;
+    if (xx < x0) x0 = xx; if (xx > x1) x1 = xx; if (yy < y0) y0 = yy; if (yy > y1) y1 = yy;
+  }
+  if (x1 < 0) return { x: 0, y: 0, w: W, h: H };
+  const s = W / w;
+  return { x: x0 * s, y: y0 * s, w: (x1 - x0 + 1) * s, h: (y1 - y0 + 1) * s };
 }
 
 function buildFrameList() {

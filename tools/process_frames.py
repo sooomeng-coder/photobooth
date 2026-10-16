@@ -292,6 +292,29 @@ def process_live(folder, old):
         entry['background'] = rel(dest)
 
     entry['width'], entry['height'] = size or LIVE_SIZE['portrait']
+
+    # slot.png: 오려낸 사람(전신)을 이 모양 안에만 넣음 (흰색/불투명 = 사람이 들어갈 자리)
+    # slot.json(선택): {"rotate": -90, "box": [x, y, w, h]} — 사람을 돌리는 각도, 사람을 맞춰 넣을 영역(배경 좌표)
+    sl = find(folder, 'slot')
+    if sl:
+        im = Image.open(sl).convert('RGBA')
+        if not has_real_alpha(im):  # 흑백 마스크로 올린 경우: 밝기 = 불투명도
+            im.putalpha(im.convert('L'))
+        dest = folder / 'slot.png'
+        if im.size != (entry['width'], entry['height']):
+            im = cover_crop(im, (entry['width'], entry['height']))
+        im.save(dest, optimize=True)
+        if sl != dest:
+            sl.unlink()
+        entry['slot'] = rel(dest)
+        cfg = folder / 'slot.json'
+        if cfg.exists():
+            opt = json.loads(cfg.read_text(encoding='utf-8'))
+            if 'rotate' in opt:
+                entry['slotRotate'] = opt['rotate']
+            if 'box' in opt:
+                entry['slotBox'] = opt['box']
+
     stickers = {}
     for k in STICKERS:
         p = find(folder, k)
