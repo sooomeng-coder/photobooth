@@ -546,6 +546,17 @@ function drawFaceSpot(ctx, W, H, sw, sh) {
   fctx.translate(-c.x, -c.y);
   fctx.drawImage(video, 0, 0, sw, sh);
   fctx.restore();
+  // 얼굴 위에 해처럼 노란 빛 (가운데는 살짝, 가장자리로 갈수록 진하게)
+  if (sp.glow !== false) {
+    fctx.globalCompositeOperation = 'source-atop';
+    fctx.save();
+    fctx.translate(tw / 2, th / 2); fctx.scale(1, th / tw);
+    const g1 = fctx.createRadialGradient(0, 0, 0, 0, 0, tw / 2);
+    g1.addColorStop(0, 'rgba(255,238,160,.22)'); g1.addColorStop(0.5, 'rgba(255,240,170,.32)');
+    g1.addColorStop(0.78, 'rgba(255,246,195,.7)'); g1.addColorStop(1, 'rgba(255,250,215,.95)');
+    fctx.fillStyle = g1; fctx.fillRect(-tw / 2, -tw / 2, tw, tw);
+    fctx.restore();
+  }
   // 가장자리 부드럽게 (타원)
   fctx.globalCompositeOperation = 'destination-in';
   fctx.save();
