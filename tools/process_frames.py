@@ -325,7 +325,10 @@ def process_live(folder, old):
     # {"copies": [{"box": [x, y, w, h], "rotate": -90}, ...]} (배경 좌표, rotate 0 = 서 있음, -90 = 머리 왼쪽으로 누움)
     pj = folder / 'people.json'
     if pj.exists():
-        entry['copies'] = json.loads(pj.read_text(encoding='utf-8')).get('copies', [])
+        opt = json.loads(pj.read_text(encoding='utf-8'))
+        entry['copies'] = opt.get('copies', [])
+        if opt.get('fit'):  # "stretch" = box에 딱 맞게 늘림
+            entry['copiesFit'] = opt['fit']
 
     stickers = {}
     for k in STICKERS:

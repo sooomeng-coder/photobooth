@@ -491,15 +491,17 @@ function cropPerson(sw, sh) {
   return true;
 }
 
-// 잘라 둔 사람을 돌려서 box(화면 좌표) 안에 비율 유지로 꽉 차게 그림. 거울(좌우반전)
-function drawPersonIn(c, bx, deg) {
+// 잘라 둔 사람을 돌려서 box(화면 좌표) 안에 그림. 거울(좌우반전)
+// stretch = box에 딱 맞게 가로세로 따로 늘림 (글자 획처럼 꽉 채울 때), 아니면 비율 유지
+function drawPersonIn(c, bx, deg, stretch) {
   const cw = cropCanvas.width, ch = cropCanvas.height;
   const rot = (deg || 0) * Math.PI / 180, side = Math.abs(Math.sin(rot)) > 0.5;
-  const sc = Math.min(bx.w / (side ? ch : cw), bx.h / (side ? cw : ch));
+  let kx = (side ? bx.h : bx.w) / cw, ky = (side ? bx.w : bx.h) / ch;  // 사람 기준 가로/세로 배율
+  if (!stretch) kx = ky = Math.min(kx, ky);
   c.save();
   c.translate(bx.x + bx.w / 2, bx.y + bx.h / 2);
   c.rotate(rot);
-  c.scale(-sc, sc);
+  c.scale(-kx, ky);
   c.drawImage(cropCanvas, -cw / 2, -ch / 2);
   c.restore();
 }
@@ -510,7 +512,7 @@ function drawCopies(ctx, W, H, sw, sh) {
   const s = W / cur.W;
   for (const p of cur.copies) {
     const [x, y, w, h] = p.box;
-    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate);
+    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, cur.copiesFit === 'stretch');
   }
 }
 
@@ -903,7 +905,7 @@ async function prepareLive(f) {
   }
   return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
     stickers: stickerList.length > 0, stickerList,
-    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null };
+    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null, copiesFit: f.copiesFit || 'contain' };
 }
 
 // 이미지에서 불투명한 부분이 차지하는 범위 (W×H 좌표)
