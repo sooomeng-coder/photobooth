@@ -321,6 +321,12 @@ def process_live(folder, old):
     if fj.exists():
         entry['faceSpot'] = json.loads(fj.read_text(encoding='utf-8'))
 
+    # people.json: 여러 명 프레임 — 오려낸 사람을 여러 자리에 세우거나 눕혀서 그림
+    # {"copies": [{"box": [x, y, w, h], "rotate": -90}, ...]} (배경 좌표, rotate 0 = 서 있음, -90 = 머리 왼쪽으로 누움)
+    pj = folder / 'people.json'
+    if pj.exists():
+        entry['copies'] = json.loads(pj.read_text(encoding='utf-8')).get('copies', [])
+
     stickers = {}
     for k in STICKERS:
         p = find(folder, k)
@@ -329,7 +335,13 @@ def process_live(folder, old):
     if stickers:
         entry['stickers'] = stickers
 
-    # 썸네일: 배경 + 프레임 (스티커는 얼굴이 있어야 해서 생략)
+    # 썸네일: 폴더에 thumb.png/jpg가 있으면 그걸 씀. 없으면 배경 + 프레임 (스티커는 얼굴이 있어야 해서 생략)
+    own = find(folder, 'thumb')
+    if own:
+        thumb = THUMBS / f'{folder.name}.jpg'
+        make_thumb(Image.open(own).convert('RGB'), thumb)
+        entry['thumb'] = rel(thumb)
+        return entry
     base = Image.new('RGBA', (entry['width'], entry['height']), (17, 17, 17, 255))
     if bg:
         base.alpha_composite(Image.open(ROOT / entry['background']).convert('RGBA'))

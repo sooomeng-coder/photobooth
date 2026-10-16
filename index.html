@@ -339,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.9';
+const APP_VERSION = 'v4.10';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -453,6 +453,7 @@ function compose(ctx, W, H) {
     ctx.drawImage(cur.bg, 0, 0, W, H);
     if (cur.faceSpot) { drawFaceSpot(ctx, W, H, sw, sh); }
     else if (cur.slot) { if (sw && sh && maskReady) drawSlot(ctx, W, H, sw, sh); }
+    else if (cur.copies) { if (sw && sh && maskReady) drawCopies(ctx, W, H, sw, sh); }
     else if (sw && sh && maskReady) {
       if (personCanvas.width !== W || personCanvas.height !== H) { personCanvas.width = W; personCanvas.height = H; }
       pctx.globalCompositeOperation = 'source-over';
@@ -472,10 +473,10 @@ function compose(ctx, W, H) {
 
 // 슬롯 프레임: 오려낸 사람(전신)을 잘라서 돌린 뒤 slot 모양 안에 맞춰 넣음 (예: 사랑니 속에 누운 사람)
 const cropCanvas = document.createElement('canvas'), cctx = cropCanvas.getContext('2d');
-function drawSlot(ctx, W, H, sw, sh) {
+// 영상에서 사람 범위만 잘라 + 마스크 적용 (여유 3%) → cropCanvas. 사람이 없으면 false
+function cropPerson(sw, sh) {
   const b = personBox;
-  if (!b) return;
-  // 1) 영상에서 사람 범위만 잘라 + 마스크 적용 (여유 3%)
+  if (!b) return false;
   const px = Math.max(0, b.x0 - 0.03), py = Math.max(0, b.y0 - 0.03);
   const pw = Math.min(1, b.x1 + 0.03) - px, ph = Math.min(1, b.y1 + 0.03) - py;
   const k = Math.min(1, 900 / Math.max(pw * sw, ph * sh));  // 속도 위해 긴 변 900px까지만
@@ -487,8 +488,36 @@ function drawSlot(ctx, W, H, sw, sh) {
   cctx.globalCompositeOperation = 'destination-in';
   const mw = maskCanvas.width, mh = maskCanvas.height;
   cctx.drawImage(maskCanvas, px * mw, py * mh, pw * mw, ph * mh, 0, 0, cw, ch);
+  return true;
+}
 
-  // 2) 돌려서 box 안에 꽉 차게(비율 유지) 넣고, slot 모양으로 자름
+// 잘라 둔 사람을 돌려서 box(화면 좌표) 안에 비율 유지로 꽉 차게 그림. 거울(좌우반전)
+function drawPersonIn(c, bx, deg) {
+  const cw = cropCanvas.width, ch = cropCanvas.height;
+  const rot = (deg || 0) * Math.PI / 180, side = Math.abs(Math.sin(rot)) > 0.5;
+  const sc = Math.min(bx.w / (side ? ch : cw), bx.h / (side ? cw : ch));
+  c.save();
+  c.translate(bx.x + bx.w / 2, bx.y + bx.h / 2);
+  c.rotate(rot);
+  c.scale(-sc, sc);
+  c.drawImage(cropCanvas, -cw / 2, -ch / 2);
+  c.restore();
+}
+
+// 여러 명 프레임: 같은 사람을 여러 자리에 세우거나 눕혀서 그림 (예: 몸으로 "퇴근" 글자 만들기)
+function drawCopies(ctx, W, H, sw, sh) {
+  if (!cropPerson(sw, sh)) return;
+  const s = W / cur.W;
+  for (const p of cur.copies) {
+    const [x, y, w, h] = p.box;
+    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate);
+  }
+}
+
+function drawSlot(ctx, W, H, sw, sh) {
+  if (!cropPerson(sw, sh)) return;
+  const cw = cropCanvas.width, ch = cropCanvas.height;
+  // 돌려서 box 안에 꽉 차게(비율 유지) 넣고, slot 모양으로 자름
   const s = W / cur.W, bx = cur.slotBox;
   const rot = (cur.slotRotate || 0) * Math.PI / 180, side = Math.abs(Math.sin(rot)) > 0.5;
   const rw = side ? ch : cw, rh = side ? cw : ch;  // 돌린 뒤 크기
@@ -874,7 +903,7 @@ async function prepareLive(f) {
   }
   return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
     stickers: stickerList.length > 0, stickerList,
-    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null };
+    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null };
 }
 
 // 이미지에서 불투명한 부분이 차지하는 범위 (W×H 좌표)
