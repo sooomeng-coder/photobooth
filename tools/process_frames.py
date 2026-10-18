@@ -329,6 +329,8 @@ def process_live(folder, old):
         entry['copies'] = opt.get('copies', [])
         if opt.get('fit'):  # "stretch" = box에 딱 맞게 늘림
             entry['copiesFit'] = opt['fit']
+        if opt.get('pixel'):  # 픽셀 필터 {"cell": 칸 크기, "colors": [어두운→밝은]}
+            entry['pixel'] = opt['pixel']
 
     # bubbles.json: 비눗방울 프레임 — 동그란 방울을 그리고, person: true인 방울 안에는 오려낸 사람(머리~허리)을 넣음
     # {"bubbles": [{"x": 중심x, "y": 중심y, "r": 반지름, "person": true}, ...]} (배경 좌표)

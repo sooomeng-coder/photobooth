@@ -339,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.11';
+const APP_VERSION = 'v4.12';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -495,8 +495,9 @@ function cropPerson(sw, sh) {
 
 // 잘라 둔 사람을 돌려서 box(화면 좌표) 안에 그림. 거울(좌우반전)
 // stretch = box에 딱 맞게 가로세로 따로 늘림 (글자 획처럼 꽉 채울 때), 아니면 비율 유지
-function drawPersonIn(c, bx, deg, stretch) {
-  const cw = cropCanvas.width, ch = cropCanvas.height;
+function drawPersonIn(c, bx, deg, stretch, src) {
+  src = src || cropCanvas;
+  const cw = src.width, ch = src.height;
   const rot = (deg || 0) * Math.PI / 180, side = Math.abs(Math.sin(rot)) > 0.5;
   let kx = (side ? bx.h : bx.w) / cw, ky = (side ? bx.w : bx.h) / ch;  // 사람 기준 가로/세로 배율
   if (!stretch) kx = ky = Math.min(kx, ky);
@@ -504,8 +505,42 @@ function drawPersonIn(c, bx, deg, stretch) {
   c.translate(bx.x + bx.w / 2, bx.y + bx.h / 2);
   c.rotate(rot);
   c.scale(-kx, ky);
-  c.drawImage(cropCanvas, -cw / 2, -ch / 2);
+  if (src !== cropCanvas) c.imageSmoothingEnabled = false;  // 픽셀은 네모 그대로 키움
+  c.drawImage(src, -cw / 2, -ch / 2);
   c.restore();
+}
+
+// 픽셀 필터: 사람을 작게 줄여 몇 가지 색으로 점묘(바이어 디더링) → 네모 픽셀 그대로 키우면 레트로 도트 그림
+// pixel = { cell: 한 칸 크기(배경 좌표), colors: ['#어두운', ..., '#밝은'] }
+const pixCanvas = document.createElement('canvas'), pxctx = pixCanvas.getContext('2d', { willReadFrequently: true });
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(v => (v + 0.5) / 16);
+let pixPal = null;
+function pixelatePerson(rowsH) {
+  const cw = cropCanvas.width, ch = cropCanvas.height;
+  const h = Math.max(8, Math.round(rowsH)), w = Math.max(4, Math.round(h * cw / ch));
+  if (pixCanvas.width !== w || pixCanvas.height !== h) { pixCanvas.width = w; pixCanvas.height = h; }
+  pxctx.clearRect(0, 0, w, h);
+  pxctx.drawImage(cropCanvas, 0, 0, w, h);
+  const im = pxctx.getImageData(0, 0, w, h), d = im.data, pal = pixPal, n = pal.length - 1;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = (y * w + x) * 4;
+    if (d[i + 3] < 110) { d[i + 3] = 0; continue; }
+    const l = (0.3 * d[i] + 0.59 * d[i + 1] + 0.11 * d[i + 2]) / 255;
+    const v = Math.min(n, Math.max(0, l * n * 1.1 - 0.05));  // 밝기 → 단계 (조금 밝게)
+    const lo = Math.floor(v), t = v - lo;
+    const c = pal[t > BAYER[(y & 3) * 4 + (x & 3)] ? Math.min(n, lo + 1) : lo];
+    d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; d[i + 3] = 255;
+  }
+  // 바깥 테두리 1칸: 가장 어두운 색
+  const a = new Uint8Array(w * h); for (let k = 0; k < w * h; k++) a[k] = d[k * 4 + 3] ? 1 : 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const k = y * w + x; if (a[k]) continue;
+    if ((x > 0 && a[k - 1]) || (x < w - 1 && a[k + 1]) || (y > 0 && a[k - w]) || (y < h - 1 && a[k + w])) {
+      const i = k * 4; d[i] = pal[0][0]; d[i + 1] = pal[0][1]; d[i + 2] = pal[0][2]; d[i + 3] = 255;
+    }
+  }
+  pxctx.putImageData(im, 0, 0);
+  return pixCanvas;
 }
 
 // 여러 명 프레임: 같은 사람을 여러 자리에 세우거나 눕혀서 그림 (예: 몸으로 "퇴근" 글자 만들기)
@@ -513,6 +548,13 @@ function drawCopies(ctx, W, H, sw, sh) {
   if (!cropPerson(sw, sh)) return;
   const s = W / cur.W;
   const stretch = cur.copiesFit === 'stretch';
+  let src = null;
+  if (cur.pixel) {  // 픽셀 필터: 첫 자리 높이 기준으로 칸 수를 정함
+    if (!pixPal) pixPal = (cur.pixel.colors || ['#1e3782', '#4e7cce', '#fafcff']).map(h => [1, 3, 5].map(j => parseInt(h.slice(j, j + 2), 16)));
+    const b0 = cur.copies[0].box, ch = cropCanvas.height, cw = cropCanvas.width;
+    const shownH = Math.min(b0[3], b0[2] * ch / cw);
+    src = pixelatePerson(shownH / (cur.pixel.cell || 16));
+  }
   for (const p of cur.copies) {
     if (p.center) {  // 비스듬한 획: 중심·길이(사람 키 방향)·굵기·각도
       const cw = cropCanvas.width, ch = cropCanvas.height;
@@ -527,7 +569,7 @@ function drawCopies(ctx, W, H, sw, sh) {
       continue;
     }
     const [x, y, w, h] = p.box;
-    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch);
+    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch, src);
   }
 }
 
@@ -1043,7 +1085,7 @@ async function prepareLive(f) {
   }
   return { W, H, live: true, bg, overlay: fr ? buildOverlay(fr) : null,
     stickers: stickerList.length > 0, stickerList,
-    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null, copiesFit: f.copiesFit || 'contain', bubbles: Array.isArray(f.bubbles) && f.bubbles.length ? f.bubbles : null,
+    slot, slotBox, slotRotate: f.slotRotate || 0, faceSpot: f.faceSpot || null, copies: Array.isArray(f.copies) && f.copies.length ? f.copies : null, copiesFit: f.copiesFit || 'contain', pixel: f.pixel || null, bubbles: Array.isArray(f.bubbles) && f.bubbles.length ? f.bubbles : null,
     bubbleImg, bubbleTone: !!f.bubbleTone, bubbleGrain: f.bubbleGrain || 0 };
 }
 
