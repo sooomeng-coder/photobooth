@@ -4,7 +4,7 @@
  * - 앱을 열 때마다 프레임·컷·얼굴인식 파일 중 아직 저장 안 된 것만 조용히 받아 둠
  *   → 행사 전에 와이파이에서 앱을 한 번 열어 두고, 버전 옆에 "오프라인 준비됨"이 뜨면 끝
  */
-const CACHE = 'photobooth-offline-v1';
+const CACHE = 'photobooth-offline-v2';
 const CORE = [
   './',
   'index.html',
@@ -44,7 +44,9 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin) return;
   e.respondWith((async () => {
     try {
-      const res = await fetch(req);
+      // 브라우저 HTTP 캐시(GitHub Pages 10분)에 걸리지 않게 항상 서버에 새 버전 확인 (바뀐 게 없으면 304로 가볍게 끝남)
+      const res = req.mode === 'navigate' ? await fetch(req.url, { cache: 'no-cache', credentials: 'same-origin' })
+                                          : await fetch(new Request(req, { cache: 'no-cache' }));
       if (res && res.ok && res.type === 'basic') {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(req, copy)).catch(() => {});
