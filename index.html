@@ -339,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.12';
+const APP_VERSION = 'v4.13';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -528,7 +528,7 @@ function drawPersonIn(c, bx, deg, stretch, src, align) {
 function drawFire(c, r) {
   const t = performance.now() / 1000;
   const n = Math.max(5, Math.round(r.w / (r.h * 0.09)));
-  const base = r.y + r.h, H = r.h * 0.32;
+  const base = r.y + r.h, H = r.h * 0.38;
   c.save();  // 흰 배경에서도 보이게 그냥 덮어 그림
   for (let i = 0; i < n; i++) {
     const x = r.x + r.w * (i + 0.5) / n;
