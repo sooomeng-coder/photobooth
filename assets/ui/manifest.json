@@ -1,4 +1,9 @@
 {
  "save": "assets/ui/btn-save.png?v=abc85e70",
- "retake": "assets/ui/btn-retake.png?v=a99b976f"
+ "retake": "assets/ui/btn-retake.png?v=a99b976f",
+ "count5": "assets/ui/count-5.png?v=178e8bee",
+ "count4": "assets/ui/count-4.png?v=77cf54c9",
+ "count3": "assets/ui/count-3.png?v=4df289ea",
+ "count2": "assets/ui/count-2.png?v=0885fa16",
+ "count1": "assets/ui/count-1.png?v=d9311c09"
 }
