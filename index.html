@@ -520,6 +520,35 @@ function drawPersonIn(c, bx, deg, stretch, src, align) {
   if (src === pixCanvas) c.imageSmoothingEnabled = false;  // 픽셀은 네모 그대로 키움
   c.drawImage(src, -cw / 2, -ch / 2);
   c.restore();
+  // 실제로 그려진 범위 (돌리지 않은 경우만 정확)
+  return { x: bx.x + bx.w / 2 - cw * kx / 2, y: bx.y + bx.h / 2 + dy - ch * ky / 2, w: cw * kx, h: ch * ky };
+}
+
+// 불꽃: 사람 아래쪽을 따라 여러 개의 불꽃이 일렁임 (시간에 따라 흔들림)
+function drawFire(c, r) {
+  const t = performance.now() / 1000;
+  const n = Math.max(5, Math.round(r.w / (r.h * 0.09)));
+  const base = r.y + r.h, H = r.h * 0.32;
+  c.save();  // 흰 배경에서도 보이게 그냥 덮어 그림
+  for (let i = 0; i < n; i++) {
+    const x = r.x + r.w * (i + 0.5) / n;
+    const ph = i * 1.7;
+    const h = H * (0.75 + 0.25 * Math.sin(t * 7 + ph) + 0.1 * Math.sin(t * 13 + ph * 2));
+    const w = r.w / n * 1.25;
+    const sway = Math.sin(t * 5 + ph) * w * 0.18;
+    for (const [k, col] of [[1, 'rgba(235,60,10,.9)'], [0.72, 'rgba(255,150,20,.95)'], [0.45, 'rgba(255,225,120,.95)']]) {
+      const hh = h * k, ww = w * k;
+      const g = c.createRadialGradient(x, base - hh * 0.25, 0, x, base - hh * 0.25, hh);
+      g.addColorStop(0, col); g.addColorStop(0.7, col); g.addColorStop(1, 'rgba(255,90,0,0)');
+      c.fillStyle = g;
+      c.beginPath();
+      c.moveTo(x - ww / 2, base);
+      c.bezierCurveTo(x - ww / 2, base - hh * 0.45, x + sway - ww * 0.1, base - hh * 0.7, x + sway, base - hh);
+      c.bezierCurveTo(x + sway + ww * 0.1, base - hh * 0.7, x + ww / 2, base - hh * 0.45, x + ww / 2, base);
+      c.closePath(); c.fill();
+    }
+  }
+  c.restore();
 }
 
 // 픽셀 필터: 사람을 작게 줄여 몇 가지 색으로 점묘(바이어 디더링) → 네모 픽셀 그대로 키우면 레트로 도트 그림
@@ -599,7 +628,8 @@ function drawCopies(ctx, W, H, sw, sh) {
     const [x, y, w, h] = p.box;
     let use = src;
     if (p.top && !src) use = topPart(p.top);  // 머리~어깨만 (아래는 부드럽게 사라짐)
-    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch, use, p.align);
+    const r = drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch, use, p.align);
+    if (p.fire) drawFire(ctx, r);
   }
 }
 
