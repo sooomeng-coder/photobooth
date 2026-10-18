@@ -339,7 +339,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.13';
+const APP_VERSION = 'v4.14';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -365,7 +365,7 @@ async function loadFrames() {
     if (!r.ok) throw new Error(r.status);
     const list = await r.json();
     if (!Array.isArray(list) || !list.length) throw new Error('empty');
-    return list.filter(f => f && (f.src || f.live));
+    return list.filter(f => f && (f.src || f.live || f.strip));
   } catch (e) {
     console.warn('frames.json을 읽지 못해 기본 프레임을 사용합니다.', e);
     return FALLBACK_FRAMES;
@@ -1176,9 +1176,10 @@ function buildFrameList() {
     im.decoding = 'async';
     im.src = f.thumb || f.src || f.background;
     if (f.live) b.insertAdjacentHTML('beforeend', '<span class="liveBadge">LIVE</span>');
+    if (f.strip) b.insertAdjacentHTML('beforeend', '<span class="liveBadge">4컷</span>');
     if (f.thumb) im.onerror = () => { im.onerror = null; im.src = f.src; };
     b.querySelector('.label').textContent = f.name || `FRAME ${i + 1}`;
-    b.addEventListener('click', () => selectFrame(i));
+    b.addEventListener('click', () => f.strip ? startStripSession(i) : selectFrame(i));
     list.appendChild(b);
   });
 }
@@ -1191,7 +1192,8 @@ function goHome() {
 }
 function goBackToFrames() {
   busy = false;
-  if (session) { session.shots = []; session.idx = 0; session.retakeIdx = null; setCutMode(false); renderPick(); show('pick'); }
+  if (session && session.strip) { session = null; setCutMode(false); show('frame'); }
+  else if (session) { session.shots = []; session.idx = 0; session.retakeIdx = null; setCutMode(false); renderPick(); show('pick'); }
   else show('frame');
 }
 function goBackToModes() { busy = false; session = null; setCutMode(false); show('start'); }
@@ -1316,7 +1318,7 @@ async function startCutSession() {
 
 async function enterCut(k) {
   session.idx = k;
-  cur = await prepareCut(session.picks[k]);
+  cur = session.strip ? session.strip.cut : await prepareCut(session.picks[k]);
   resetVisionState();
   screens.shoot.querySelector('.stage').style.setProperty('--ar', cur.W / cur.H);  // 누운 컷은 가로로
   renderCutBar();
@@ -1334,8 +1336,8 @@ function renderCutBar() {
     const d = document.createElement('div');
     const shot = shots[k];
     d.className = (shot ? 'done' : '') + (k === idx ? ' current' : '');
-    const f = CUTS[picks[k]];
-    d.style.backgroundImage = shot && k !== idx ? `url("${shot.thumb}")` : `url("${encodeURI(f.thumb || f.src)}")`;
+    const f = session.strip ? null : CUTS[picks[k]];
+    d.style.backgroundImage = shot && k !== idx ? `url("${shot.thumb}")` : f ? `url("${encodeURI(f.thumb || f.src)}")` : 'none';
     d.innerHTML = `<span>${k + 1}</span>`;
     box.appendChild(d);
   }
@@ -1343,8 +1345,8 @@ function renderCutBar() {
 
 async function onCutShot(out) {
   if (cur.rotate) out = rotateCanvas(out, -cur.rotate);  // 인화 방향으로 되돌림
-  const t = document.createElement('canvas'); t.width = 150; t.height = 200;
-  t.getContext('2d').drawImage(out, 0, 0, 150, 200);
+  const t = document.createElement('canvas'); t.width = 150; t.height = Math.round(150 * out.height / out.width);
+  t.getContext('2d').drawImage(out, 0, 0, t.width, t.height);
   out.thumb = t.toDataURL('image/jpeg', 0.8);
   session.shots[session.idx] = out;
   if (session.retakeIdx != null) { session.retakeIdx = null; return finishSheet(); }
@@ -1360,6 +1362,7 @@ function loadSheetDesign(mode) {
 }
 
 async function composeSheet() {
+  if (session.strip) return composeStrip();
   const L = LAYOUTS[session.mode], S = SHEET.SCALE;
   const c = document.createElement('canvas'); c.width = SHEET.W * S; c.height = SHEET.H * S;
   const ctx = c.getContext('2d');
@@ -1397,7 +1400,7 @@ async function finishSheet() {
   const layer = $('retakeLayer');
   layer.textContent = '';
   layer.classList.toggle('used', session.retakeLeft <= 0);
-  for (const cell of LAYOUTS[session.mode].cells) {
+  for (const cell of (session.cells || LAYOUTS[session.mode].cells)) {
     const b = document.createElement('button');
     Object.assign(b.style, { left: cell.x / SHEET.W * 100 + '%', top: cell.y / SHEET.H * 100 + '%',
       width: cell.w / SHEET.W * 100 + '%', height: cell.h / SHEET.H * 100 + '%' });
@@ -1409,6 +1412,60 @@ async function finishSheet() {
     ? '마음에 안 드는 컷을 누르면 다시 찍을 수 있어요 (1번)' : '다시 찍기를 사용했어요';
   busy = false;
   show('result');
+}
+
+/* ================= 띠 디자인 4컷 (예: 공주의 규칙) =================
+   frames.json: { name, strip: { designs: [띠1, 띠2](1200x3600), holes: [[x,y,w,h] x4](1x, 띠 하나 600x1800 기준) }, thumb }
+   4컷을 찍으면 4x6 시트에 띠 2개(디자인 2개)를 나란히, 띠마다 같은 4컷을 흰 타원 자리에 부드럽게 넣음 */
+function softOval(w, h, inner) {  // 가운데는 불투명, 가장자리로 갈수록 투명한 타원 (흰 빛 속으로 사라짐)
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const x = c.getContext('2d');
+  x.translate(w / 2, h / 2); x.scale(1, h / w);
+  const g = x.createRadialGradient(0, 0, w / 2 * inner, 0, 0, w / 2);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(-w / 2, -w / 2, w, w);
+  return c;
+}
+async function startStripSession(i) {
+  const f = FRAMES[i], st = f.strip;
+  if (selecting) return;
+  selecting = true; document.body.style.cursor = 'progress';
+  let designs;
+  try { designs = await Promise.all(st.designs.map(loadImg)); }
+  catch (e) { console.error('띠 디자인을 불러오지 못했습니다', e); return; }
+  finally { selecting = false; document.body.style.cursor = ''; }
+  const S = SHEET.SCALE, [hx, hy, hw, hh] = st.holes[0];
+  const W = Math.round(hw * S), H = Math.round(hh * S);
+  // 촬영 화면: 타원 바깥은 흰 빛으로 덮어서 실제로 나오는 모양을 미리 보여줌
+  const ov = document.createElement('canvas'); ov.width = W; ov.height = H;
+  const oc = ov.getContext('2d');
+  oc.fillStyle = '#fff'; oc.fillRect(0, 0, W, H);
+  oc.globalCompositeOperation = 'destination-out'; oc.drawImage(softOval(W, H, 0.62), 0, 0);
+  const cells = [0, 1].flatMap(s => st.holes.map((h, k) => ({ i: k, x: s * 600 + h[0], y: h[1], w: h[2], h: h[3] })));
+  session = { mode: '4', n: st.holes.length, picks: [], shots: [], idx: 0, retakeIdx: null,
+    retakeLeft: CONFIG.MAX_RETAKE, cells, strip: { designs, cut: { W, H, overlay: ov } } };
+  resetVisionState();
+  setCutMode(true);
+  await enterCut(0);
+  startCamera();
+}
+async function composeStrip() {
+  const S = SHEET.SCALE, st = session.strip;
+  const c = document.createElement('canvas'); c.width = SHEET.W * S; c.height = SHEET.H * S;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+  st.designs.forEach((d, s) => ctx.drawImage(d, s * c.width / 2, 0, c.width / 2, c.height));
+  const tmp = document.createElement('canvas'), tx = tmp.getContext('2d');
+  for (const cell of session.cells) {
+    const shot = session.shots[cell.i]; if (!shot) continue;
+    const w = Math.round(cell.w * S), h = Math.round(cell.h * S);
+    tmp.width = w; tmp.height = h;
+    tx.globalCompositeOperation = 'source-over'; tx.clearRect(0, 0, w, h);
+    tx.drawImage(shot, 0, 0, w, h);
+    tx.globalCompositeOperation = 'destination-in'; tx.drawImage(softOval(w, h, 0.62), 0, 0);
+    ctx.drawImage(tmp, cell.x * S, cell.y * S);
+  }
+  return c;
 }
 
 function retakeCut(k) {

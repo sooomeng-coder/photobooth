@@ -424,7 +424,7 @@ def main():
         changed = True
 
     for f in frames:
-        if f.get('live'):
+        if f.get('live') or f.get('strip'):
             continue
         src = ROOT / f['src']
         thumb = f.get('thumb')

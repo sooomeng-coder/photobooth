@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.12) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.14) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -116,6 +116,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - **픽셀 필터 (v4.12)**: `people.json`에 `"pixel":{"cell","colors"}` → `pixelatePerson()`(줄이기 + 바이어 디더링 + 테두리) 결과를 `drawPersonIn(..., src)`로 네모 그대로 키움. 예: `frames/윈앰프/`
 - **비눗방울 프레임 (v4.11)**: 폴더에 `bubbles.json` `{"bubbles":[{"x","y","r","person"}]}`가 있으면 방울을 그리고 person 방울에 사람 머리~허리(`BUBBLE_TOP`)를 넣음(`frames.json`의 `bubbles`).
   코드: `drawBubbles()`(cropPerson 재사용), `drawSoapBubble()`/`lensOnly()`, `drawGrain()`. `tone`·`grain`·폴더 `bubble.png` 옵션. 금붕어는 `frame.png`(흰 바탕 → 투명 변환해서 올림). 예: `frames/금붕어/`, `frames/금붕어 세로/`
+- **띠 디자인 4컷 (v4.14)**: `frames.json`에 `{name, strip:{designs:[띠1,띠2](1200x3600), holes:[[x,y,w,h]x4](1x, 띠 600x1800 기준)}, thumb}` (폴더 아님, 파일은 `strips/`). 1컷 목록에서 누르면 4컷 연속 촬영 → 시트에 띠 2개. 코드: `startStripSession()`, `composeStrip()`, `softOval()`. 예: 공주의 규칙
 - 테스트: Chromium `--use-file-for-fake-video-capture=파일.y4m`로 얼굴이 나오는 영상을 가짜 카메라로 쓸 수 있음
 
 ### 업로드 폴더 (사용자가 GitHub 웹에서 올리는 곳) — 저장소 첫 화면 `README.md`에 표로 정리
