@@ -1426,6 +1426,14 @@ function softOval(w, h, inner) {  // 가운데는 불투명, 가장자리로 갈
   x.fillStyle = g; x.fillRect(-w / 2, -w / 2, w, w);
   return c;
 }
+// 띠 가장자리 배경색 (타원 높이의 왼쪽 끝 픽셀)
+function edgeColor(img, hole) {
+  const c = document.createElement('canvas'); c.width = c.height = 1;
+  const x = c.getContext('2d'), k = img.naturalWidth / 600;
+  x.drawImage(img, 4 * k, (hole[1] + hole[3] / 2) * k, 4 * k, 4 * k, 0, 0, 1, 1);
+  const d = x.getImageData(0, 0, 1, 1).data;
+  return `rgb(${d[0]},${d[1]},${d[2]})`;
+}
 async function startStripSession(i) {
   const f = FRAMES[i], st = f.strip;
   if (selecting) return;
@@ -1439,11 +1447,12 @@ async function startStripSession(i) {
   // 촬영 화면: 타원 바깥은 흰 빛으로 덮어서 실제로 나오는 모양을 미리 보여줌
   const ov = document.createElement('canvas'); ov.width = W; ov.height = H;
   const oc = ov.getContext('2d');
-  oc.fillStyle = '#fff'; oc.fillRect(0, 0, W, H);
-  oc.globalCompositeOperation = 'destination-out'; oc.drawImage(softOval(W, H, 0.62), 0, 0);
+  const bgs = designs.map(d => edgeColor(d, st.holes[0]));
+  oc.fillStyle = bgs[0]; oc.fillRect(0, 0, W, H);
+  oc.globalCompositeOperation = 'destination-out'; oc.drawImage(softOval(W, H, 0.4), 0, 0);
   const cells = [0, 1].flatMap(s => st.holes.map((h, k) => ({ i: k, x: s * 600 + h[0], y: h[1], w: h[2], h: h[3] })));
   session = { mode: '4', n: st.holes.length, picks: [], shots: [], idx: 0, retakeIdx: null,
-    retakeLeft: CONFIG.MAX_RETAKE, cells, strip: { designs, cut: { W, H, overlay: ov } } };
+    retakeLeft: CONFIG.MAX_RETAKE, cells, strip: { designs, bgs, cut: { W, H, overlay: ov } } };
   resetVisionState();
   setCutMode(true);
   await enterCut(0);
@@ -1455,6 +1464,18 @@ async function composeStrip() {
   const ctx = c.getContext('2d');
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
   st.designs.forEach((d, s) => ctx.drawImage(d, s * c.width / 2, 0, c.width / 2, c.height));
+  // 흰 빛을 띠 배경색으로 덮음 ('darken': 흰색만 배경색이 되고 손글씨·검은 선은 그대로)
+  const half = c.width / 2, wipe = document.createElement('canvas'); wipe.width = half; wipe.height = c.height;
+  st.designs.forEach((d, s) => {
+    const wx = wipe.getContext('2d'); wx.clearRect(0, 0, half, c.height);
+    for (const cell of session.cells.filter(q => q.x >= s * 600 && q.x < s * 600 + 600)) {
+      const w = cell.w * 1.12 * S, h = cell.h * 1.45 * S;
+      const ov = softOval(Math.round(w), Math.round(h), 0.55), ox = ov.getContext('2d');
+      ox.globalCompositeOperation = 'source-in'; ox.fillStyle = st.bgs[s]; ox.fillRect(0, 0, ov.width, ov.height);
+      wx.drawImage(ov, (cell.x - s * 600 + cell.w / 2) * S - w / 2, (cell.y + cell.h / 2) * S - h / 2);
+    }
+    ctx.save(); ctx.globalCompositeOperation = 'darken'; ctx.drawImage(wipe, s * half, 0); ctx.restore();
+  });
   const tmp = document.createElement('canvas'), tx = tmp.getContext('2d');
   for (const cell of session.cells) {
     const shot = session.shots[cell.i]; if (!shot) continue;
@@ -1462,7 +1483,7 @@ async function composeStrip() {
     tmp.width = w; tmp.height = h;
     tx.globalCompositeOperation = 'source-over'; tx.clearRect(0, 0, w, h);
     tx.drawImage(shot, 0, 0, w, h);
-    tx.globalCompositeOperation = 'destination-in'; tx.drawImage(softOval(w, h, 0.62), 0, 0);
+    tx.globalCompositeOperation = 'destination-in'; tx.drawImage(softOval(w, h, 0.4), 0, 0);
     ctx.drawImage(tmp, cell.x * S, cell.y * S);
   }
   return c;
