@@ -1318,7 +1318,7 @@ async function startCutSession() {
 
 async function enterCut(k) {
   session.idx = k;
-  cur = session.strip ? session.strip.cut : await prepareCut(session.picks[k]);
+  cur = session.strip ? session.strip.cuts[k] : await prepareCut(session.picks[k]);
   resetVisionState();
   screens.shoot.querySelector('.stage').style.setProperty('--ar', cur.W / cur.H);  // 누운 컷은 가로로
   renderCutBar();
@@ -1434,6 +1434,23 @@ function edgeColor(img, hole) {
   const d = x.getImageData(0, 0, 1, 1).data;
   return `rgb(${d[0]},${d[1]},${d[2]})`;
 }
+// 띠 하나(1200x3600)를 그리고 사진 자리의 흰 빛을 띠 배경색으로 덮음 ('darken': 흰색만 바뀌고 손글씨·선은 그대로)
+function wipedStrip(design, bg, holes) {
+  const S = SHEET.SCALE, c = document.createElement('canvas'); c.width = 600 * S; c.height = SHEET.H * S;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(design, 0, 0, c.width, c.height);
+  const wipe = document.createElement('canvas'); wipe.width = c.width; wipe.height = c.height;
+  const wx = wipe.getContext('2d');
+  for (const [x, y, hw, hh] of holes) {
+    const w = hw * 1.12 * S, h = hh * 1.45 * S;
+    const ov = softOval(Math.round(w), Math.round(h), 0.55), ox = ov.getContext('2d');
+    ox.globalCompositeOperation = 'source-in'; ox.fillStyle = bg; ox.fillRect(0, 0, ov.width, ov.height);
+    wx.drawImage(ov, (x + hw / 2) * S - w / 2, (y + hh / 2) * S - h / 2);
+  }
+  ctx.globalCompositeOperation = 'darken'; ctx.drawImage(wipe, 0, 0);
+  return c;
+}
+const STRIP_PAD = { top: 40, bottom: 150 };  // 촬영 화면에 보여줄 범위: 사진 자리 위 40, 아래 150 (아래 문구 포함)
 async function startStripSession(i) {
   const f = FRAMES[i], st = f.strip;
   if (selecting) return;
@@ -1442,40 +1459,42 @@ async function startStripSession(i) {
   try { designs = await Promise.all(st.designs.map(loadImg)); }
   catch (e) { console.error('띠 디자인을 불러오지 못했습니다', e); return; }
   finally { selecting = false; document.body.style.cursor = ''; }
-  const S = SHEET.SCALE, [hx, hy, hw, hh] = st.holes[0];
-  const W = Math.round(hw * S), H = Math.round(hh * S);
-  // 촬영 화면: 타원 바깥은 흰 빛으로 덮어서 실제로 나오는 모양을 미리 보여줌
-  const ov = document.createElement('canvas'); ov.width = W; ov.height = H;
-  const oc = ov.getContext('2d');
+  const S = SHEET.SCALE;
   const bgs = designs.map(d => edgeColor(d, st.holes[0]));
-  oc.fillStyle = bgs[0]; oc.fillRect(0, 0, W, H);
-  oc.globalCompositeOperation = 'destination-out'; oc.drawImage(softOval(W, H, 0.4), 0, 0);
+  const wiped = designs.map((d, s) => wipedStrip(d, bgs[s], st.holes));
+  // 촬영 화면: 첫 번째 띠에서 사진 자리 + 아래 문구까지 잘라 보여주고, 사진 자리는 카메라가 비치게 뚫음
+  const cuts = st.holes.map(([hx, hy, hw, hh]) => {
+    const ry = Math.max(0, hy - STRIP_PAD.top), rh = Math.min(SHEET.H - ry, hh + STRIP_PAD.top + STRIP_PAD.bottom);
+    const W = 600 * S, H = Math.round(rh * S);
+    const ov = document.createElement('canvas'); ov.width = W; ov.height = H;
+    const oc = ov.getContext('2d');
+    oc.drawImage(wiped[0], 0, ry * S, W, H, 0, 0, W, H);
+    const hole = { x: hx * S, y: (hy - ry) * S, w: Math.round(hw * S), h: Math.round(hh * S) };
+    oc.globalCompositeOperation = 'destination-out'; oc.drawImage(softOval(hole.w, hole.h, 0.4), hole.x, hole.y);
+    return { W, H, overlay: ov, hole };
+  });
   const cells = [0, 1].flatMap(s => st.holes.map((h, k) => ({ i: k, x: s * 600 + h[0], y: h[1], w: h[2], h: h[3] })));
   session = { mode: '4', n: st.holes.length, picks: [], shots: [], idx: 0, retakeIdx: null,
-    retakeLeft: CONFIG.MAX_RETAKE, cells, strip: { designs, bgs, cut: { W, H, overlay: ov } } };
+    retakeLeft: CONFIG.MAX_RETAKE, cells, strip: { designs, bgs, wiped, cuts } };
   resetVisionState();
   setCutMode(true);
   await enterCut(0);
   startCamera();
 }
+// 띠 촬영: 화면에 보이던 그대로 사진 자리 부분의 카메라만 잘라 냄
+function stripShot() {
+  const sw = video.videoWidth, sh = video.videoHeight, h = cur.hole;
+  const full = document.createElement('canvas'); full.width = cur.W; full.height = cur.H;
+  drawMirroredCover(full.getContext('2d'), video, sw, sh, 0, 0, cur.W, cur.H);
+  const out = document.createElement('canvas'); out.width = h.w; out.height = h.h;
+  out.getContext('2d').drawImage(full, h.x, h.y, h.w, h.h, 0, 0, h.w, h.h);
+  return out;
+}
 async function composeStrip() {
   const S = SHEET.SCALE, st = session.strip;
   const c = document.createElement('canvas'); c.width = SHEET.W * S; c.height = SHEET.H * S;
   const ctx = c.getContext('2d');
-  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
-  st.designs.forEach((d, s) => ctx.drawImage(d, s * c.width / 2, 0, c.width / 2, c.height));
-  // 흰 빛을 띠 배경색으로 덮음 ('darken': 흰색만 배경색이 되고 손글씨·검은 선은 그대로)
-  const half = c.width / 2, wipe = document.createElement('canvas'); wipe.width = half; wipe.height = c.height;
-  st.designs.forEach((d, s) => {
-    const wx = wipe.getContext('2d'); wx.clearRect(0, 0, half, c.height);
-    for (const cell of session.cells.filter(q => q.x >= s * 600 && q.x < s * 600 + 600)) {
-      const w = cell.w * 1.12 * S, h = cell.h * 1.45 * S;
-      const ov = softOval(Math.round(w), Math.round(h), 0.55), ox = ov.getContext('2d');
-      ox.globalCompositeOperation = 'source-in'; ox.fillStyle = st.bgs[s]; ox.fillRect(0, 0, ov.width, ov.height);
-      wx.drawImage(ov, (cell.x - s * 600 + cell.w / 2) * S - w / 2, (cell.y + cell.h / 2) * S - h / 2);
-    }
-    ctx.save(); ctx.globalCompositeOperation = 'darken'; ctx.drawImage(wipe, s * half, 0); ctx.restore();
-  });
+  st.wiped.forEach((d, s) => ctx.drawImage(d, s * c.width / 2, 0));
   const tmp = document.createElement('canvas'), tx = tmp.getContext('2d');
   for (const cell of session.cells) {
     const shot = session.shots[cell.i]; if (!shot) continue;
@@ -1520,7 +1539,7 @@ async function shoot() {
   compose(out.getContext('2d'), out.width, out.height);
 
   const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
-  if (session) { busy = false; return onCutShot(out); }
+  if (session) { busy = false; return onCutShot(session.strip ? stripShot() : out); }
 
   resultBlob = await new Promise(r => out.toBlob(r, 'image/png'));
   const img = $('resultImg');
