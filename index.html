@@ -517,7 +517,7 @@ function drawPersonIn(c, bx, deg, stretch, src, align) {
   c.translate(bx.x + bx.w / 2, bx.y + bx.h / 2 + dy);
   c.rotate(rot);
   c.scale(-kx, ky);
-  if (src !== cropCanvas) c.imageSmoothingEnabled = false;  // 픽셀은 네모 그대로 키움
+  if (src === pixCanvas) c.imageSmoothingEnabled = false;  // 픽셀은 네모 그대로 키움
   c.drawImage(src, -cw / 2, -ch / 2);
   c.restore();
 }
@@ -555,6 +555,22 @@ function pixelatePerson(rowsH) {
   return pixCanvas;
 }
 
+// 사람 위쪽 일부(top = 0~1)만 잘라서 아래 25%를 부드럽게 사라지게 → 아이콘처럼 머리~어깨
+const partCanvas = document.createElement('canvas'), ptctx = partCanvas.getContext('2d');
+function topPart(top) {
+  const cw = cropCanvas.width, ch = Math.max(1, Math.round(cropCanvas.height * top));
+  if (partCanvas.width !== cw || partCanvas.height !== ch) { partCanvas.width = cw; partCanvas.height = ch; }
+  ptctx.globalCompositeOperation = 'source-over';
+  ptctx.clearRect(0, 0, cw, ch);
+  ptctx.drawImage(cropCanvas, 0, 0, cw, ch, 0, 0, cw, ch);
+  ptctx.globalCompositeOperation = 'destination-in';
+  const g = ptctx.createLinearGradient(0, ch * 0.75, 0, ch);
+  g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ptctx.fillStyle = g; ptctx.fillRect(0, 0, cw, ch);
+  ptctx.globalCompositeOperation = 'source-over';
+  return partCanvas;
+}
+
 // 여러 명 프레임: 같은 사람을 여러 자리에 세우거나 눕혀서 그림 (예: 몸으로 "퇴근" 글자 만들기)
 function drawCopies(ctx, W, H, sw, sh) {
   if (!cropPerson(sw, sh)) return;
@@ -581,7 +597,9 @@ function drawCopies(ctx, W, H, sw, sh) {
       continue;
     }
     const [x, y, w, h] = p.box;
-    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch, src, p.align);
+    let use = src;
+    if (p.top && !src) use = topPart(p.top);  // 머리~어깨만 (아래는 부드럽게 사라짐)
+    drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch, use, p.align);
   }
 }
 
