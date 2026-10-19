@@ -63,6 +63,9 @@
     cursor: pointer; transition: transform .1s; }
   .shutter:active { transform: translateX(-50%) scale(.92); }
   .shutter:disabled { opacity: 0; pointer-events: none; }
+  #dblHint { position: absolute; top: 3%; left: 50%; transform: translateX(-50%); padding: .4em 1.1em; border-radius: 999px;
+    background: rgba(0,0,0,.55); color: #fff; font-weight: 800; font-size: clamp(14px, 2.4vmin, 22px); pointer-events: none; white-space: nowrap; }
+  #dblHint.hidden { display: none; }
   #countdown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: min(40vmin, 360px); font-weight: 900; color: #fff; pointer-events: none;
     text-shadow: 0 0 30px rgba(0,0,0,.6), 0 6px 0 rgba(0,0,0,.35); }
@@ -310,6 +313,7 @@
   <div class="stage">
     <canvas id="live"></canvas>
     <div id="countdown"></div>
+    <div id="dblHint" class="hidden"></div>
     <button id="shutterBtn" class="shutter" aria-label="촬영"></button>
     <button class="home" data-back aria-label="프레임 다시 고르기">←</button>
     <div id="camMsg" class="msg hidden"></div>
@@ -339,7 +343,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.14';
+const APP_VERSION = 'v4.15';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -365,7 +369,7 @@ async function loadFrames() {
     if (!r.ok) throw new Error(r.status);
     const list = await r.json();
     if (!Array.isArray(list) || !list.length) throw new Error('empty');
-    return list.filter(f => f && (f.src || f.live || f.strip));
+    return list.filter(f => f && (f.src || f.live || f.strip || f.double));
   } catch (e) {
     console.warn('frames.json을 읽지 못해 기본 프레임을 사용합니다.', e);
     return FALLBACK_FRAMES;
@@ -469,6 +473,7 @@ function compose(ctx, W, H) {
     drawMirroredCover(ctx, video, sw, sh, 0, 0, W, H);
   }
   if (cur.overlay) ctx.drawImage(cur.overlay, 0, 0, W, H);
+  if (cur.ghost) { ctx.save(); ctx.globalAlpha = cur.double.preview || 0.4; ctx.drawImage(cur.ghost, 0, 0, W, H); ctx.restore(); }
   if (cur.bubbleGrain) drawGrain(ctx, W, H, cur.bubbleGrain);
   if (cur.stickers && sw && sh) drawStickers(ctx, W, H, sw, sh);
 }
@@ -1060,7 +1065,7 @@ function renderVersion() {
 function show(name) {
   for (const k in screens) screens[k].classList.toggle('active', k === name);
   cancelAnimationFrame(rafId);
-  if (name === 'shoot') { $('shutterBtn').disabled = false; $('countdown').textContent = ''; loop(); }
+  if (name === 'shoot') { $('shutterBtn').disabled = false; $('countdown').textContent = ''; if (!(cur && cur.double)) $('dblHint').classList.add('hidden'); loop(); }
 }
 
 let startPick = null;
@@ -1088,7 +1093,8 @@ async function selectFrame(i) {
     selecting = true;
     document.body.style.cursor = 'progress';
     try {
-      overlayCache.set(i, f.live ? await prepareLive(f) : await prepareStatic(f));
+      overlayCache.set(i, f.double ? { W: f.double.width || 2360, H: f.double.height || 1640, double: f.double }
+        : f.live ? await prepareLive(f) : await prepareStatic(f));
     } catch (e) {
       console.error('프레임을 불러오지 못했습니다:', f.src, e);
       return;
@@ -1098,6 +1104,7 @@ async function selectFrame(i) {
     }
   }
   cur = overlayCache.get(i);
+  if (cur.double) { cur.ghost = null; showDblHint(); }
   session = null; setCutMode(false);
   resetVisionState();
   const ar = cur.W / cur.H;
@@ -1539,6 +1546,19 @@ async function shoot() {
   compose(out.getContext('2d'), out.width, out.height);
 
   const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
+  if (cur.double) {
+    if (!cur.ghost) {  // 첫 번째 사진: 저장해 두고 두 번째 촬영으로 (화면에 옅게 겹쳐 보임)
+      const g = document.createElement('canvas'); g.width = cur.W; g.height = cur.H;
+      drawMirroredCover(g.getContext('2d'), video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H);
+      cur.ghost = g; showDblHint();
+      $('shutterBtn').disabled = false; busy = false; return;
+    }
+    // 두 번째 사진: 카메라 위에 첫 사진을 반투명으로 겹쳐 저장
+    const o = out.getContext('2d');
+    drawMirroredCover(o, video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H);
+    o.globalAlpha = cur.double.mix || 0.5; o.drawImage(cur.ghost, 0, 0); o.globalAlpha = 1;
+    $('dblHint').classList.add('hidden');
+  }
   if (session) { busy = false; return onCutShot(session.strip ? stripShot() : out); }
 
   resultBlob = await new Promise(r => out.toBlob(r, 'image/png'));
@@ -1561,9 +1581,15 @@ function save() {
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 }
 
+function showDblHint() {
+  const h = $('dblHint');
+  h.textContent = cur.ghost ? '2 / 2  첫 번째 사진에 겹쳐서 찍어요' : '1 / 2  첫 번째 사진';
+  h.classList.remove('hidden');
+}
 function retake() {
   if (retakesLeft <= 0) return;
   retakesLeft--;
+  if (cur && cur.double) { cur.ghost = null; showDblHint(); }
   show('shoot');
 }
 
