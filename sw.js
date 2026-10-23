@@ -12,6 +12,7 @@ const CORE = [
   'cuts/cuts.json',
   'assets/ui/manifest.json',
   'assets/start-bg.jpg',
+  'assets/sheet-logo.png',
   'assets/pick-bg.jpg',
   'assets/pick-bg-land.jpg',
   'vendor/mediapipe/vision_bundle.mjs',

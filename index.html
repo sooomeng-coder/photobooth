@@ -343,7 +343,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.17';
+const APP_VERSION = 'v4.18';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -383,11 +383,13 @@ async function loadFrames() {
 const SHEET = { W: 1200, H: 1800, SCALE: 2 };
 const CUT = { W: 708, H: 944 };  // 컷 하나를 찍는 해상도 (3:4)
 const CUTS_JSON = 'cuts/cuts.json';
+const SHEET_LOGO = 'assets/sheet-logo.png';  // 9컷 시트 위 띠 로고 (시트 디자인 이미지가 없을 때)
 const LAYOUTS = {
   9: { n: 9, design: 'sheet9',
        // v4.17: 컷 사이 간격 없이 딱 붙임, 바깥 여백 24 → 컷 384x512 (예전 354x472보다 8.5% 큼)
-       cells: [0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ i: r * 3 + c, x: 24 + c * 384, y: 24 + r * 512, w: 384, h: 512 }))),
-       footers: [{ x: 24, y: 1560, w: 1152, h: 216 }] },
+       // v4.18: 로고 띠를 위로(어쩌다 사진관까지 하는 302호), 사진은 그 아래 → 아래 여백 24만 남음
+       cells: [0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ i: r * 3 + c, x: 24 + c * 384, y: 240 + r * 512, w: 384, h: 512 }))),
+       footers: [{ x: 24, y: 24, w: 1152, h: 216, logo: SHEET_LOGO }] },
   4: { n: 4, design: 'sheet4',
        cells: [0, 1].flatMap(s => [0, 1, 2, 3].map(i => ({ i, x: s * 600 + 162, y: 40 + i * 388, w: 276, h: 368 }))),
        footers: [0, 1].map(s => ({ x: s * 600 + 30, y: 1592, w: 540, h: 168 })) },
@@ -1385,9 +1387,19 @@ async function composeSheet() {
       ctx.strokeStyle = '#d8d8d8'; ctx.lineWidth = 2 * S; ctx.setLineDash([12 * S, 10 * S]);
       ctx.beginPath(); ctx.moveTo(c.width / 2, 0); ctx.lineTo(c.width / 2, c.height); ctx.stroke(); ctx.setLineDash([]);
     }
+    const date = `${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())}`;
     for (const f of L.footers) {
+      const logo = f.logo && await loadImg(f.logo).catch(() => null);
+      if (logo) {  // 로고(가운데) + 그 아래 작은 날짜
+        const lw = f.w * 0.8, lh = lw * logo.naturalHeight / logo.naturalWidth;
+        const top = f.y + (f.h - lh - 50) / 2;
+        ctx.drawImage(logo, (f.x + (f.w - lw) / 2) * S, top * S, lw * S, lh * S);
+        ctx.font = `600 ${Math.round(26 * S)}px -apple-system, "Helvetica Neue", sans-serif`;
+        ctx.fillText(date, (f.x + f.w / 2) * S, (top + lh + 36) * S);
+        continue;
+      }
       ctx.font = `700 ${Math.round(f.h * 0.22 * S)}px -apple-system, "Helvetica Neue", sans-serif`;
-      ctx.fillText(`${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())}`, (f.x + f.w / 2) * S, (f.y + f.h / 2) * S);
+      ctx.fillText(date, (f.x + f.w / 2) * S, (f.y + f.h / 2) * S);
     }
   }
   for (const cell of L.cells) {
