@@ -343,7 +343,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.15';
+const APP_VERSION = 'v4.16';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1525,6 +1525,23 @@ function retakeCut(k) {
 /* ================= 촬영 ================= */
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
+// 1컷 사진을 10x15cm 인화 비율(2:3)로 맞춤. 저장 크기 2400x3600(가로면 3600x2400) = 600dpi
+// 비율이 비슷하면(아이패드 비율 등) 가운데 기준으로 살짝 잘라 꽉 채우고, 많이 다르면(정사각형 등) 흰 여백을 둠
+const PRINT = { SHORT: 2400, LONG: 3600, CROP_MAX: 0.06 };
+function fitPrint(src) {
+  const land = src.width > src.height;
+  const W = land ? PRINT.LONG : PRINT.SHORT, H = land ? PRINT.SHORT : PRINT.LONG;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d');
+  x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  const cover = Math.max(W / src.width, H / src.height), contain = Math.min(W / src.width, H / src.height);
+  const k = 1 - contain / cover <= PRINT.CROP_MAX ? cover : contain;  // 잘리는 양이 6% 이하면 꽉 채움
+  const w = src.width * k, h = src.height * k;
+  x.imageSmoothingQuality = 'high';
+  x.drawImage(src, (W - w) / 2, (H - h) / 2, w, h);
+  return c;
+}
+
 async function shoot() {
   if (busy || !video.videoWidth) return;
   busy = true;
@@ -1561,7 +1578,9 @@ async function shoot() {
   }
   if (session) { busy = false; return onCutShot(session.strip ? stripShot() : out); }
 
-  resultBlob = await new Promise(r => out.toBlob(r, 'image/png'));
+  const print = fitPrint(out);  // 10x15cm(4x6인치, 2:3) 인화지에 맞춤
+  screens.result.querySelector('.stage').style.setProperty('--ar', print.width / print.height);
+  resultBlob = await new Promise(r => print.toBlob(r, 'image/png'));
   const img = $('resultImg');
   if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src);
   img.src = URL.createObjectURL(resultBlob);
