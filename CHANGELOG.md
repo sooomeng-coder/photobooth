@@ -15,6 +15,12 @@ git checkout <버전의 커밋> -- index.html tools .github
 git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 ```
 
+## v4.20 — 1컷 프레임도 9컷에서 고르기
+- `cuts.json` 항목 `{"name","frame":"<frames.json 이름>","src","thumb"}` → 촬영은 1컷과 똑같이(LIVE 사람 오려내기 포함)
+- 찍은 사진이 가로면 세우고(시계방향 90°) 3:4 가운데로 잘라 칸에 넣음. 썸네일 `cuts/thumbs/frame_<이름>.jpg`도 같은 모양
+- 1컷 프레임 24개를 컷 목록 끝(#189~#212)에 추가 (공주의 규칙·이중노출은 제외)
+- 코드: `prepFrame()`, `prepareCut()`의 frame 분기, `coverCrop()`, `onCutShot()`
+
 ## v4.19 — 현장에서 프레임별 카메라 배율·위치 조정
 - 촬영 화면 오른쪽 위 ⚙를 **0.8초 길게 누르면** 조정 패널 (손님이 실수로 못 열게)
 - 배율 0.5~3배(슬라이더, －/＋ 0.05), 위치 ←↑↓→(2%씩). 미리보기·저장 사진 모두 적용. 1장 프레임·컷 프레임 모두(띠 4컷 제외)

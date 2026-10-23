@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.19) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.20) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -148,6 +148,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
   `onCutShot()`이 찍은 캔버스를 반대로 돌려 708×944로 저장. 자동 등록은 이 값을 모름 → 누운 컷이 오면 수동으로 넣기
 - 사용자가 대화로 보내는 컷은 투명이 흰색으로 바뀌어 옴 → 흰 타원(순수 흰색 덩어리, 테두리 안 닿고 채움률 ~0.785)을 찾아 투명으로 바꿔 등록
   (가려진 타원은 흰 영역 그대로, 배경과 붙은 타원은 가장자리로 타원 맞춤). 사용자에게는 초록(#00FF00)으로 칠해 달라고 안내함
+- **1컷 프레임을 컷으로 (v4.20)**: `cuts.json`에 `{"frame": "<frames.json 이름>"}` 항목 → `prepareCut()`이 1컷 준비(`prepFrame`)를 그대로 씀. `onCutShot()`이 가로면 90° 돌리고 `coverCrop()`으로 3:4. 썸네일은 미리 돌려 자른 `cuts/thumbs/frame_<이름>.jpg`
 - 컷 프레임 자동 등록: `cuts/`에 올리면 `process_frames.py`가 3:4로 맞춤(비율 다르면 초록/투명 구멍 기준으로 자름) → `cutN.png`, `cuts/cuts.json`
 - PNG 저장 후 프린트. 파일명 `photobooth_9cut_…png` / `photobooth_4cut_…png`
 

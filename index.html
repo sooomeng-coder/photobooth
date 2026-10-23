@@ -377,7 +377,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.19';
+const APP_VERSION = 'v4.20';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1187,8 +1187,7 @@ async function selectFrame(i) {
     selecting = true;
     document.body.style.cursor = 'progress';
     try {
-      overlayCache.set(i, f.double ? { W: f.double.width || 2360, H: f.double.height || 1640, double: f.double }
-        : f.live ? await prepareLive(f) : await prepareStatic(f));
+      overlayCache.set(i, await prepFrame(f));
     } catch (e) {
       console.error('프레임을 불러오지 못했습니다:', f.src, e);
       return;
@@ -1215,6 +1214,11 @@ async function selectFrame(i) {
       msg.innerHTML = '얼굴 인식을 불러오지 못했어요.<br>새로고침 후 다시 시도해 주세요.'; msg.classList.remove('hidden');
     }
   }
+}
+
+function prepFrame(f) {
+  return f.double ? Promise.resolve({ W: f.double.width || 2360, H: f.double.height || 1640, double: f.double })
+    : f.live ? prepareLive(f) : prepareStatic(f);
 }
 
 async function prepareStatic(f) {
@@ -1378,7 +1382,16 @@ function renderPick() {
 }
 
 const cutCache = new Map();
+// 1컷 프레임을 9컷 컷으로 (v4.20): cuts.json 항목 { "frame": "<frames.json 이름>" }
+// 촬영은 1컷과 똑같이(LIVE 포함), 찍은 사진은 가로면 돌려 세우고 3:4로 가운데 잘라 칸에 넣음
 async function prepareCut(i) {
+  const cf = CUTS[i];
+  if (cf && cf.frame) {
+    const j = FRAMES.findIndex(x => x.name === cf.frame);
+    if (j < 0) throw new Error('프레임 없음: ' + cf.frame);
+    if (!overlayCache.has(j)) overlayCache.set(j, await prepFrame(FRAMES[j]));
+    return overlayCache.get(j);
+  }
   if (!cutCache.has(i)) cutCache.set(i, prepareStatic(CUTS[i]).then(c => rotateForShoot(c, CUTS[i].shootRotate))
     .catch(e => { cutCache.delete(i); throw e; }));
   return cutCache.get(i);
@@ -1423,6 +1436,7 @@ async function enterCut(k) {
   cur = session.strip ? session.strip.cuts[k] : await prepareCut(session.picks[k]);
   if (session.strip) setAdjTarget(null, '');
   else { const c = CUTS[session.picks[k]]; setAdjTarget(c.src, `컷 #${session.picks[k] + 1} ${c.name || ''}`); }
+  if (cur.live) loadVision().catch(() => {});
   resetVisionState();
   screens.shoot.querySelector('.stage').style.setProperty('--ar', cur.W / cur.H);  // 누운 컷은 가로로
   renderCutBar();
@@ -1447,8 +1461,19 @@ function renderCutBar() {
   }
 }
 
+function coverCrop(src, ar) {  // 가운데를 ar(가로/세로) 비율로 잘라 냄
+  let w = src.width, h = src.height;
+  if (w / h > ar) w = Math.round(h * ar); else h = Math.round(w / ar);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  c.getContext('2d').drawImage(src, (src.width - w) / 2, (src.height - h) / 2, w, h, 0, 0, w, h);
+  return c;
+}
 async function onCutShot(out) {
   if (cur.rotate) out = rotateCanvas(out, -cur.rotate);  // 인화 방향으로 되돌림
+  if (!session.strip && CUTS[session.picks[session.idx]].frame) {  // 1컷 프레임: 가로면 세우고 3:4로
+    if (out.width > out.height) out = rotateCanvas(out, 90);
+    out = coverCrop(out, 3 / 4);
+  }
   const t = document.createElement('canvas'); t.width = 150; t.height = Math.round(150 * out.height / out.width);
   t.getContext('2d').drawImage(out, 0, 0, t.width, t.height);
   out.thumb = t.toDataURL('image/jpeg', 0.8);
