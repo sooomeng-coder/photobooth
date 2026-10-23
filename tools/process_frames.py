@@ -15,7 +15,7 @@
 - 스티커 PNG    파일 이름 = 붙는 위치 (STICKERS 참고). 얼굴을 따라 움직임
 
 컷 프레임 (4컷/9컷 시트용): cuts/ 폴더
-- 새 이미지를 cutN.png로 바꾸고 3:4(708x944)로 맞춤. 비율이 다르면 초록/투명 구멍이 가운데 오도록 잘라냄
+- 새 이미지를 cutN.png로 바꾸고 3:4(768x1024)로 맞춤. 비율이 다르면 초록/투명 구멍이 가운데 오도록 잘라냄
 - 썸네일 cuts/thumbs/cutN.jpg, 목록 cuts/cuts.json
 
 디자인 이미지: 디자인/ 아래 용도별 폴더(DESIGN_TARGETS)에 아무 이름으로 한 장 올리면 크기를 맞춰 assets/로 복사하고
@@ -35,7 +35,7 @@ THUMBS = FRAMES / 'thumbs'
 LIST = FRAMES / 'frames.json'
 CUTS = ROOT / 'cuts'
 CUT_LIST = CUTS / 'cuts.json'
-CUT_SIZE = (708, 944)  # 반명함판 3x4cm @600dpi
+CUT_SIZE = (768, 1024)  # 9컷 시트 칸 384x512 @2x (v4.17~). 예전 708x944도 비율 같아서 그대로 씀
 CUT_THUMB = 240        # 컷 고르기 화면은 카드가 작고 200개쯤 들어가서 썸네일도 작게
 MAX_SIDE = 2400
 THUMB_SIZE = 600

@@ -381,7 +381,7 @@ async function loadFrames() {
    9컷: templates/sheet_4x6_9cut.json 과 같은 값 (컷 = 반명함 3x4cm)
    4컷: 세로로 반 자르면 2x6인치 띠 2개, 띠마다 같은 4컷 (컷 비율 3:4 동일, 크기만 작음) */
 const SHEET = { W: 1200, H: 1800, SCALE: 2 };
-const CUT = { W: 708, H: 944 };  // 컷 하나를 찍는 해상도 (3:4)
+const CUT = { W: 768, H: 1024 };  // 컷 비율 3:4 (실제 촬영 해상도 = 컷 프레임 파일 크기, 새 컷은 768x1024)
 const CUTS_JSON = 'cuts/cuts.json';
 const SHEET_LOGO = 'assets/sheet-logo.png';  // 9컷 시트 위 띠 로고 (시트 디자인 이미지가 없을 때)
 const LAYOUTS = {
