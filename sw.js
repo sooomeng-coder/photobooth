@@ -10,6 +10,7 @@ const CORE = [
   'index.html',
   'frames/frames.json',
   'cuts/cuts.json',
+  'cam-adjust.json',
   'assets/ui/manifest.json',
   'assets/start-bg.jpg',
   'assets/sheet-logo.png',

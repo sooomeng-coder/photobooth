@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.18) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.19) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -155,6 +155,12 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - `sw.js`: 같은 출처 GET은 네트워크 우선 + 캐시 저장, 실패 시 캐시. 앱이 `warm` 메시지를 보내면 `frames.json`/`cuts.json`/`assets/ui/manifest.json`에 있는 이미지와 `vendor/mediapipe` 파일 중 빠진 것만 받아 둠
 - 앱: `setupOffline()` (https 또는 localhost에서만 등록), 버전 라벨에 준비 상태 표시
 - 새 vendor 파일이 생기면 `sw.js`의 `CORE` 목록에 추가. 캐시 구조를 바꾸면 `CACHE` 이름의 숫자를 올림
+
+## 현장 카메라 조정 (v4.19)
+- 촬영 화면 ⚙(오른쪽 위) 0.8초 길게 누르기 → 프레임별 배율(z 0.5~3)·이동(x,y: 영역 대비 비율, +x 오른쪽 +y 아래)
+- 키 = 프레임 src. 기본값 `cam-adjust.json`(루트, `{src:{z,x,y}}`) + 기기 localStorage(`photobooth.camAdjust`)가 덮어씀
+- 사용자가 "전체 설정 복사" 결과를 보내오면 `cam-adjust.json`에 넣고 push
+- 적용: `compose()`의 일반 경로(배경 없는 프레임·컷), 이중노출. 배경/사람 오려내기 프레임·띠 4컷엔 미적용
 
 ## 카메라 선택 (v4.7)
 - `startCamera()`: 먼저 앞 카메라(`facingMode: 'user'`)로 권한을 받고, `findExternalCam()`이 이름이 내장 카메라(`BUILTIN_CAM` 정규식: 전면/후면/front/back/desk view)가 아닌 카메라를 찾으면 그걸로 바꿈

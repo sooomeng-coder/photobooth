@@ -66,6 +66,22 @@
   #dblHint { position: absolute; top: 3%; left: 50%; transform: translateX(-50%); padding: .4em 1.1em; border-radius: 999px;
     background: rgba(0,0,0,.55); color: #fff; font-weight: 800; font-size: clamp(14px, 2.4vmin, 22px); pointer-events: none; white-space: nowrap; }
   #dblHint.hidden { display: none; }
+  /* 현장 카메라 조정 (v4.19): 오른쪽 위 ⚙ 길게 누르기 */
+  #adjBtn { position: absolute; top: 2.5%; right: 2%; width: 44px; height: 44px; border-radius: 50%; border: 0;
+    background: rgba(0,0,0,.18); color: rgba(255,255,255,.55); font-size: 20px; z-index: 6; -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none; touch-action: none; }
+  #adjBtn.hold { background: rgba(0,0,0,.6); color: #fff; }
+  #adjPanel { position: absolute; top: calc(2.5% + 52px); right: 2%; z-index: 7; width: min(360px, 80%);
+    background: rgba(20,20,20,.88); color: #fff; border-radius: 14px; padding: 12px 14px; font: 15px/1.4 -apple-system, sans-serif;
+    display: flex; flex-direction: column; gap: 10px; }
+  #adjPanel.hidden { display: none; }
+  #adjLabel { font-weight: 700; }
+  #adjPanel label { display: flex; flex-direction: column; gap: 4px; }
+  #adjPanel input[type=range] { width: 100%; }
+  .adjRow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .adjRow button { min-width: 44px; height: 40px; border-radius: 10px; border: 0; background: #fff; color: #111; font-size: 16px; padding: 0 10px; }
+  .adjRow .sep { width: 8px; }
+  #adjMsg { font-size: 12px; opacity: .75; min-height: 1em; }
   #countdown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: min(40vmin, 360px); font-weight: 900; color: #fff; pointer-events: none;
     text-shadow: 0 0 30px rgba(0,0,0,.6), 0 6px 0 rgba(0,0,0,.35); }
@@ -316,6 +332,24 @@
     <div id="dblHint" class="hidden"></div>
     <button id="shutterBtn" class="shutter" aria-label="촬영"></button>
     <button class="home" data-back aria-label="프레임 다시 고르기">←</button>
+    <button id="adjBtn" aria-label="카메라 배율 조정 (길게 누르기)">⚙</button>
+    <div id="adjPanel" class="hidden">
+      <div id="adjLabel"></div>
+      <label>배율 <b id="adjZv">1.00</b>
+        <input id="adjZ" type="range" min="0.5" max="3" step="0.05" value="1"></label>
+      <div class="adjRow">
+        <button data-adj="z,-0.05">－</button><button data-adj="z,0.05">＋</button>
+        <span class="sep"></span>
+        <button data-adj="x,-0.02">←</button><button data-adj="y,-0.02">↑</button>
+        <button data-adj="y,0.02">↓</button><button data-adj="x,0.02">→</button>
+      </div>
+      <div class="adjRow">
+        <button id="adjReset">이 프레임 초기화</button>
+        <button id="adjCopy">전체 설정 복사</button>
+        <button id="adjClose">닫기</button>
+      </div>
+      <div id="adjMsg"></div>
+    </div>
     <div id="camMsg" class="msg hidden"></div>
   </div>
   <div id="cutBar">
@@ -343,7 +377,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.18';
+const APP_VERSION = 'v4.19';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -438,15 +472,71 @@ function buildOverlay(img) {
 
 /* ================= 합성 ================= */
 // 영상을 (dx,dy,dw,dh) 영역에 cover 방식 + 좌우반전으로 그리기
-function drawMirroredCover(ctx, src, sw, sh, dx, dy, dw, dh) {
-  const scale = Math.max(dw / sw, dh / sh);
-  const cw = dw / scale, ch = dh / scale;
-  const sx = (sw - cw) / 2, sy = (sh - ch) / 2;
+// adj = 프레임별 카메라 조정 { z: 배율, x/y: 화면 기준 이동(영역 대비 비율, +x 오른쪽, +y 아래) } — 현장 조정(v4.19)
+function drawMirroredCover(ctx, src, sw, sh, dx, dy, dw, dh, adj) {
+  const z = (adj && adj.z) || 1, mx = (adj && adj.x) || 0, my = (adj && adj.y) || 0;
+  const s = Math.max(dw / sw, dh / sh) * z, w = sw * s, h = sh * s;
   ctx.save();
   ctx.beginPath(); ctx.rect(dx, dy, dw, dh); ctx.clip();
-  ctx.translate(dx + dw, dy); ctx.scale(-1, 1);
-  ctx.drawImage(src, sx, sy, cw, ch, 0, 0, dw, dh);
+  ctx.translate(dx + dw, dy); ctx.scale(-1, 1);  // 거울: 이 안에서 x는 반대 방향
+  ctx.drawImage(src, 0, 0, sw, sh, (dw - w) / 2 - mx * dw, (dh - h) / 2 + my * dh, w, h);
   ctx.restore();
+}
+
+/* ================= 현장 카메라 조정 (v4.19) =================
+   프레임마다 카메라 배율·위치를 다르게. 키 = 프레임 파일 경로(src).
+   기본값 cam-adjust.json(저장소) + 이 기기에서 조정한 값(localStorage)이 덮어씀.
+   촬영 화면 오른쪽 위 ⚙를 0.8초 길게 누르면 패널이 열림. "전체 설정 복사" → 대화로 보내면 cam-adjust.json에 넣어 고정 */
+const ADJ_LS = 'photobooth.camAdjust';
+let ADJ_BASE = {}, ADJ_LOCAL = {}, adjKey = null;
+try { ADJ_LOCAL = JSON.parse(localStorage.getItem(ADJ_LS) || '{}') || {}; } catch (e) { ADJ_LOCAL = {}; }
+fetch('cam-adjust.json', { cache: 'no-store' }).then(r => r.ok ? r.json() : {}).then(j => { ADJ_BASE = j || {}; syncAdjUI(); }).catch(() => {});
+function camAdj() { return adjKey ? (ADJ_LOCAL[adjKey] || ADJ_BASE[adjKey] || null) : null; }
+function setAdjTarget(key, label) {
+  adjKey = key;
+  const l = $('adjLabel'); if (l) l.textContent = key ? label : '이 프레임은 조정할 수 없어요';
+  syncAdjUI();
+}
+function saveAdj(a) {
+  const r = v => Math.round(v * 1000) / 1000;
+  const clean = { z: r(Math.min(3, Math.max(0.5, a.z))), x: r(Math.min(1, Math.max(-1, a.x))), y: r(Math.min(1, Math.max(-1, a.y))) };
+  ADJ_LOCAL[adjKey] = clean;
+  try { localStorage.setItem(ADJ_LS, JSON.stringify(ADJ_LOCAL)); } catch (e) {}
+  syncAdjUI();
+}
+function syncAdjUI() {
+  const a = camAdj() || { z: 1, x: 0, y: 0 };
+  const zi = $('adjZ'); if (!zi) return;
+  zi.value = a.z; $('adjZv').textContent = (+a.z).toFixed(2) + (a.x || a.y ? ` · 이동 ${Math.round(a.x * 100)}, ${Math.round(a.y * 100)}` : '');
+}
+function setupAdjPanel() {
+  const btn = $('adjBtn'), panel = $('adjPanel'); let t = 0;
+  const end = () => { clearTimeout(t); btn.classList.remove('hold'); };
+  btn.addEventListener('pointerdown', e => {
+    e.preventDefault(); btn.classList.add('hold');
+    t = setTimeout(() => { end(); if (!busy) { panel.classList.toggle('hidden'); syncAdjUI(); $('adjMsg').textContent = ''; } }, 800);
+  });
+  for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) btn.addEventListener(ev, end);
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+  $('adjZ').addEventListener('input', e => { if (!adjKey) return; const a = { x: 0, y: 0, ...(camAdj() || {}) }; a.z = +e.target.value; saveAdj(a); });
+  panel.querySelectorAll('[data-adj]').forEach(b => b.addEventListener('click', () => {
+    if (!adjKey) return;
+    const [k, d] = b.dataset.adj.split(','); const a = { z: 1, x: 0, y: 0, ...(camAdj() || {}) };
+    a[k] = +a[k] + +d; saveAdj(a);
+  }));
+  $('adjReset').addEventListener('click', () => {
+    if (!adjKey) return;
+    if (ADJ_BASE[adjKey]) ADJ_LOCAL[adjKey] = { z: 1, x: 0, y: 0 }; else delete ADJ_LOCAL[adjKey];
+    try { localStorage.setItem(ADJ_LS, JSON.stringify(ADJ_LOCAL)); } catch (e) {}
+    syncAdjUI(); $('adjMsg').textContent = '기본(1.00)으로 돌렸어요';
+  });
+  $('adjCopy').addEventListener('click', async () => {
+    const all = { ...ADJ_BASE, ...ADJ_LOCAL };
+    const txt = JSON.stringify(all, null, 1);
+    try { await navigator.clipboard.writeText(txt); $('adjMsg').textContent = `${Object.keys(all).length}개 프레임 설정을 복사했어요`; }
+    catch (e) { $('adjMsg').textContent = '복사 실패 — 다시 눌러 주세요'; }
+  });
+  $('adjClose').addEventListener('click', () => panel.classList.add('hidden'));
 }
 
 // 사람만 오려낸 카메라 영상을 그릴 임시 캔버스
@@ -473,7 +563,7 @@ function compose(ctx, W, H) {
     }
   } else if (sw && sh) {
     // 카메라 한 화면을 프레임 전체 뒤에 깔고, 초록 구멍으로 보이게 함
-    drawMirroredCover(ctx, video, sw, sh, 0, 0, W, H);
+    drawMirroredCover(ctx, video, sw, sh, 0, 0, W, H, camAdj());
   }
   if (cur.overlay) ctx.drawImage(cur.overlay, 0, 0, W, H);
   if (cur.ghost) { ctx.save(); ctx.globalAlpha = cur.double.preview || 0.4; ctx.drawImage(cur.ghost, 0, 0, W, H); ctx.restore(); }
@@ -1068,6 +1158,7 @@ function renderVersion() {
 function show(name) {
   for (const k in screens) screens[k].classList.toggle('active', k === name);
   cancelAnimationFrame(rafId);
+  if (name !== 'shoot') { const p = $('adjPanel'); if (p) p.classList.add('hidden'); }
   if (name === 'shoot') { $('shutterBtn').disabled = false; $('countdown').textContent = ''; if (!(cur && cur.double)) $('dblHint').classList.add('hidden'); loop(); }
 }
 
@@ -1107,6 +1198,7 @@ async function selectFrame(i) {
     }
   }
   cur = overlayCache.get(i);
+  setAdjTarget(f.src, `1장 #${i + 1} ${f.name || ''}`);
   if (cur.double) { cur.ghost = null; showDblHint(); }
   session = null; setCutMode(false);
   resetVisionState();
@@ -1329,6 +1421,8 @@ async function startCutSession() {
 async function enterCut(k) {
   session.idx = k;
   cur = session.strip ? session.strip.cuts[k] : await prepareCut(session.picks[k]);
+  if (session.strip) setAdjTarget(null, '');
+  else { const c = CUTS[session.picks[k]]; setAdjTarget(c.src, `컷 #${session.picks[k] + 1} ${c.name || ''}`); }
   resetVisionState();
   screens.shoot.querySelector('.stage').style.setProperty('--ar', cur.W / cur.H);  // 누운 컷은 가로로
   renderCutBar();
@@ -1555,6 +1649,7 @@ function fitPrint(src) {
 async function shoot() {
   if (busy || !video.videoWidth) return;
   busy = true;
+  $('adjPanel').classList.add('hidden');
   $('shutterBtn').disabled = true;
   const cd = $('countdown');
   const count = session && session.idx > 0 && session.retakeIdx == null ? CONFIG.CUT_COUNTDOWN : CONFIG.COUNTDOWN;
@@ -1576,13 +1671,13 @@ async function shoot() {
   if (cur.double) {
     if (!cur.ghost) {  // 첫 번째 사진: 저장해 두고 두 번째 촬영으로 (화면에 옅게 겹쳐 보임)
       const g = document.createElement('canvas'); g.width = cur.W; g.height = cur.H;
-      drawMirroredCover(g.getContext('2d'), video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H);
+      drawMirroredCover(g.getContext('2d'), video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H, camAdj());
       cur.ghost = g; showDblHint();
       $('shutterBtn').disabled = false; busy = false; return;
     }
     // 두 번째 사진: 카메라 위에 첫 사진을 반투명으로 겹쳐 저장
     const o = out.getContext('2d');
-    drawMirroredCover(o, video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H);
+    drawMirroredCover(o, video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H, camAdj());
     o.globalAlpha = cur.double.mix || 0.5; o.drawImage(cur.ghost, 0, 0); o.globalAlpha = 1;
     $('dblHint').classList.add('hidden');
   }
@@ -1711,6 +1806,7 @@ function setupOffline() {
 
   $('startGo').addEventListener('click', goStart);
   $('shutterBtn').addEventListener('click', shoot);
+  setupAdjPanel();
   $('saveBtn').addEventListener('click', save);
   $('retakeBtn').addEventListener('click', retake);
   document.querySelectorAll('[data-home]').forEach(b => b.addEventListener('click', goHome));
