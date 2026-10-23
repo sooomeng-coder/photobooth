@@ -1390,12 +1390,9 @@ async function composeSheet() {
     const date = `${d.getFullYear()}.${z(d.getMonth() + 1)}.${z(d.getDate())}`;
     for (const f of L.footers) {
       const logo = f.logo && await loadImg(f.logo).catch(() => null);
-      if (logo) {  // 로고(가운데) + 그 아래 작은 날짜
+      if (logo) {  // 로고만 가운데 (날짜 없음, v4.18)
         const lw = f.w * 0.8, lh = lw * logo.naturalHeight / logo.naturalWidth;
-        const top = f.y + (f.h - lh - 50) / 2;
-        ctx.drawImage(logo, (f.x + (f.w - lw) / 2) * S, top * S, lw * S, lh * S);
-        ctx.font = `600 ${Math.round(26 * S)}px -apple-system, "Helvetica Neue", sans-serif`;
-        ctx.fillText(date, (f.x + f.w / 2) * S, (top + lh + 36) * S);
+        ctx.drawImage(logo, (f.x + (f.w - lw) / 2) * S, (f.y + (f.h - lh) / 2) * S, lw * S, lh * S);
         continue;
       }
       ctx.font = `700 ${Math.round(f.h * 0.22 * S)}px -apple-system, "Helvetica Neue", sans-serif`;
