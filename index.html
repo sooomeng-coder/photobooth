@@ -343,7 +343,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.16';
+const APP_VERSION = 'v4.17';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -385,8 +385,9 @@ const CUT = { W: 708, H: 944 };  // 컷 하나를 찍는 해상도 (3:4)
 const CUTS_JSON = 'cuts/cuts.json';
 const LAYOUTS = {
   9: { n: 9, design: 'sheet9',
-       cells: [0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ i: r * 3 + c, x: 45 + c * 378, y: 45 + r * 496, w: 354, h: 472 }))),
-       footers: [{ x: 45, y: 1533, w: 1110, h: 222 }] },
+       // v4.17: 컷 사이 간격 없이 딱 붙임, 바깥 여백 24 → 컷 384x512 (예전 354x472보다 8.5% 큼)
+       cells: [0, 1, 2].flatMap(r => [0, 1, 2].map(c => ({ i: r * 3 + c, x: 24 + c * 384, y: 24 + r * 512, w: 384, h: 512 }))),
+       footers: [{ x: 24, y: 1560, w: 1152, h: 216 }] },
   4: { n: 4, design: 'sheet4',
        cells: [0, 1].flatMap(s => [0, 1, 2, 3].map(i => ({ i, x: s * 600 + 162, y: 40 + i * 388, w: 276, h: 368 }))),
        footers: [0, 1].map(s => ({ x: s * 600 + 30, y: 1592, w: 540, h: 168 })) },
