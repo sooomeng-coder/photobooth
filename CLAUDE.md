@@ -168,6 +168,12 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - 앱 `mergeLists()`: `FRAMES[i]` = CUTS[i]의 1컷용 프레임(컷 파일이면 `cutFrame:true`로 만든 것). `prepareCut()`의 frame 분기는 `FRAMES[i]` 사용
 - `frames.json`은 LIVE 등 1컷 프레임 정의만 담음. 새 1컷 프레임은 `sync_cut_refs()`가 cuts.json 끝에 자동 추가
 
+## 프레임 점검 아티팩트 (Claude 점검표)
+- claude.ai 아티팩트 "302호 프레임 점검표" https://claude.ai/artifact/7cgRrbB4RLYyh9GADhJfoN — 사용자가 프레임별로 OK/수정/삭제, 문제 태그(구멍 작음·큼·위치·모양, 배율 조정), 배율 숫자(z), 메모, **구멍 그리기**(타원 shapes, 0~1 정규화 cx,cy,rx,ry, 3:4 기준) 입력
+- 데이터: ArtifactData collection `review`, doc id = `k`+md5(cuts.json src)[:12], 필드 {no,name,src,s,m,z,issues,shapes,done}. 반영하면 `done: true`로 update
+- 썸네일 = 분홍(#FF2BD6)이 카메라 보이는 자리. 원본 `scratchpad/reviewart/`(세션 바뀌면 다시 만들어야 함): t/NNN.jpg 360×480 + frames.json(no,name,src,key,kind,area,holes,edge,z)
+- 목록이 바뀌면(삭제·추가) 썸네일·frames.json 다시 만들어 같은 URL로 재게시
+
 ## 프레임 점검 (v4.21)
 - `review.html` = 점검표 (OK/수정/삭제 + 메모, localStorage `photobooth.review`). "결과 복사" 텍스트를 사용자가 보내오면: 삭제는 cuts.json/frames.json에서 빼기(파일도), 수정은 메모대로, [배율] JSON은 `cam-adjust.json`에
 - `index.html#test-c-N` / `#test-f-N` → `openTest()`가 그 프레임 바로 촬영 화면 + 배율 패널 + `#testBar`(◀ ▶ 목록)
