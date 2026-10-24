@@ -417,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.34';
+const APP_VERSION = 'v4.35';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -627,6 +627,14 @@ function compose(ctx, W, H) {
     spctx.drawImage(cur.ghost, 0, 0, W, H);
     spctx.globalCompositeOperation = 'destination-in'; spctx.drawImage(cur.split, 0, 0, W, H);
     ctx.drawImage(splitCanvas, 0, 0);
+  }
+  if (cur.variants) {  // 0.35초마다 다른 그림으로 (찍는 순간 보이는 것이 저장됨)
+    const now = performance.now();
+    if (!cur.vt || now - cur.vt > 350) {
+      let k = Math.floor(Math.random() * cur.variants.length);
+      if (k === cur.vi) k = (k + 1) % cur.variants.length;
+      cur.vi = k; cur.vt = now; cur.overlay = cur.variants[k];
+    }
   }
   if (cur.overlay) ctx.drawImage(cur.overlay, 0, 0, W, H);
   if (cur.ghost && cur.double) { ctx.save(); ctx.globalAlpha = cur.double.preview || 0.4; ctx.drawImage(cur.ghost, 0, 0, W, H); ctx.restore(); }
@@ -1492,7 +1500,11 @@ async function prepareCut(i) {
     if (!overlayCache.has(j)) overlayCache.set(j, await prepFrame(FRAMES[j]));
     return overlayCache.get(j);
   }
-  if (!cutCache.has(i)) cutCache.set(i, prepareStatic(CUTS[i]).then(c => rotateForShoot(c, CUTS[i].shootRotate))
+  const vs = CUTS[i].variants;  // v4.35: 랜덤 프레임 — 여러 장을 번갈아 보여 주고 찍는 순간의 것으로 저장
+  if (!cutCache.has(i)) cutCache.set(i, (vs && vs.length > 1
+    ? Promise.all(vs.map(v => prepareStatic({ src: v }).then(c => rotateForShoot(c, CUTS[i].shootRotate))))
+        .then(list => ({ ...list[0], variants: list.map(c => c.overlay) }))
+    : prepareStatic(CUTS[i]).then(c => rotateForShoot(c, CUTS[i].shootRotate)))
     .catch(e => { cutCache.delete(i); throw e; }));
   return cutCache.get(i);
 }

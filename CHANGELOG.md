@@ -15,6 +15,10 @@ git checkout <버전의 커밋> -- index.html tools .github
 git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 ```
 
+## v4.35 — 랜덤 프레임
+- cuts.json 항목 `variants: [src...]` → 촬영 화면에서 0.35초마다 무작위로 바뀌고, 찍는 순간 보이던 그림으로 저장. 예: #286 제초 자격증(1·2·3·5급, 가로 → 세워 저장 shootRotate -90)
+- #285 하트 추가 (회색 하트 = 구멍)
+
 ## v4.34 — 나눠 찍기
 - cuts.json 항목에 `split: <마스크 png>`(흰색 = 첫 사진 자리) → 그 칸은 두 번 찍음: 1번째는 위, 2번째(자동 카운트다운)는 아래. 예: #193 158(`assets/split/cut195_top.png`)
 

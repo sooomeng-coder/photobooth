@@ -118,6 +118,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
   코드: `drawBubbles()`(cropPerson 재사용), `drawSoapBubble()`/`lensOnly()`, `drawGrain()`. `tone`·`grain`·폴더 `bubble.png` 옵션. 금붕어는 `frame.png`(흰 바탕 → 투명 변환해서 올림). 예: `frames/금붕어/`, `frames/금붕어 세로/`
 - **띠 디자인 4컷 (v4.14)**: `frames.json`에 `{name, strip:{designs:[띠1,띠2](1200x3600), holes:[[x,y,w,h]x4](1x, 띠 600x1800 기준)}, thumb}` (폴더 아님, 파일은 `strips/`). 1컷 목록에서 누르면 4컷 연속 촬영 → 시트에 띠 2개. 코드: `startStripSession()`, `composeStrip()`, `softOval()`. 예: 공주의 규칙
 - **이중노출 (v4.15)**: `frames.json`에 `{name, double:{width,height,preview,mix}, thumb}`. 첫 촬영은 `cur.ghost`로 저장 → `compose()`가 preview 투명도로 겹쳐 보임 → 두 번째 촬영에서 mix로 섞어 저장. `#dblHint` 안내
+- **랜덤 프레임 (v4.35)**: cuts.json 항목 `variants`(컷 파일 여러 장) → `prepareCut()`이 다 불러 `cur.variants`, `compose()`가 0.35초마다 무작위 교체. 처리 스크립트는 variants 파일을 새 컷으로 등록하지 않음
 - **나눠 찍기 (v4.34)**: cuts.json 항목 `split`(마스크 PNG, 흰색 = 첫 사진 자리) → `enterCut`이 `cur.split` 로드, 첫 촬영은 `cur.ghost`, `compose()`가 ghost를 마스크로 잘라 카메라 위에. 이중노출과 같은 2번 촬영 흐름(`#dblHint`). 예: #193
 - 테스트: Chromium `--use-file-for-fake-video-capture=파일.y4m`로 얼굴이 나오는 영상을 가짜 카메라로 쓸 수 있음
 

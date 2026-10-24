@@ -282,5 +282,7 @@
   {"name": "배경 파랑 도트", "frame": "배경 파랑 도트", "src": "frames/thumbs/배경 파랑 도트.jpg", "thumb": "cuts/thumbs/frame_배경_파랑_도트.jpg"},
   {"name": "배경 파스텔 별", "frame": "배경 파스텔 별", "src": "frames/thumbs/배경 파스텔 별.jpg", "thumb": "cuts/thumbs/frame_배경_파스텔_별.jpg"},
   {"name": "배경 꾸이", "frame": "배경 꾸이", "src": "frames/thumbs/배경 꾸이.jpg", "thumb": "cuts/thumbs/frame_배경_꾸이.jpg"},
-  {"name": "배경 나는 돌머리", "frame": "배경 나는 돌머리", "src": "frames/thumbs/배경 나는 돌머리.jpg", "thumb": "cuts/thumbs/frame_배경_나는_돌머리.jpg"}
+  {"name": "배경 나는 돌머리", "frame": "배경 나는 돌머리", "src": "frames/thumbs/배경 나는 돌머리.jpg", "thumb": "cuts/thumbs/frame_배경_나는_돌머리.jpg"},
+  {"name": "하트", "src": "cuts/cut290.png", "thumb": "cuts/thumbs/cut290.jpg"},
+  {"name": "제초 자격증", "src": "cuts/cut291.png", "thumb": "cuts/thumbs/cut291.jpg", "shootRotate": -90, "variants": ["cuts/cut291.png", "cuts/cut292.png", "cuts/cut293.png", "cuts/cut294.png"]}
 ]

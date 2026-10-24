@@ -113,6 +113,7 @@ def process_cuts():
         return
     cuts = json.loads(CUT_LIST.read_text(encoding='utf-8')) if CUT_LIST.exists() else []
     known = {f.get('src') for f in cuts}
+    known |= {v for f in cuts for v in f.get('variants', [])}  # v4.35: 랜덤 프레임 묶음
     used = {int(m.group(1)) for f in cuts if (m := re.search(r'cut(\d+)\.png$', f.get('src', '')))}
     used |= {int(m.group(1)) for p in CUTS.glob('cut*.png') if (m := re.fullmatch(r'cut(\d+)\.png', p.name))}
     no = max(used, default=0) + 1
