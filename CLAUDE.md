@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.25) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.26) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -151,6 +151,11 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - **1컷 프레임을 컷으로 (v4.20)**: `cuts.json`에 `{"frame": "<frames.json 이름>"}` 항목 → `prepareCut()`이 1컷 준비(`prepFrame`)를 그대로 씀. `onCutShot()`이 가로면 90° 돌리고 `coverCrop()`으로 3:4. 썸네일은 미리 돌려 자른 `cuts/thumbs/frame_<이름>.jpg`
 - 컷 프레임 자동 등록: `cuts/`에 올리면 `process_frames.py`가 3:4로 맞춤(v4.24부터 비율 다르면 자르지 않고 흰 여백) → `cutN.png`, `cuts/cuts.json`
 - PNG 저장 후 프린트. 파일명 `photobooth_9cut_…png` / `photobooth_4cut_…png`
+
+## 드라이브 업로드·현장 흐름 (v4.26)
+- SAVE → 다운로드 + `queueUpload()`(JPEG 0.92로 바꿔 IndexedDB 큐 → `flushUploads()` → 앱스크립트 웹앱에 `{name,mime,data(base64)}` POST, 응답 `{ok:true}`면 큐에서 지움) → `#doneLayer` [확인] → `goHome()`
+- 받는 쪽 `tools/drive-upload.gs` (사용자가 script.google.com에 붙여 웹 앱으로 배포: 실행=나, 액세스=모든 사용자). 주소를 사용자가 보내오면 `CONFIG.UPLOAD_URL`에 넣고 push
+- 시작 화면 9컷만, 카운트다운 8초(모든 컷), 다음 컷 `autoShoot()`. 다시 찍기 = 시트에서 여러 컷 고르기(`toggleRetake`/`startRetakes`/`nextRetake`, `retakeQueue`), 시트당 2번
 
 ## 오프라인 (v4.6)
 - `sw.js`: 같은 출처 GET은 네트워크 우선 + 캐시 저장, 실패 시 캐시. 앱이 `warm` 메시지를 보내면 `frames.json`/`cuts.json`/`assets/ui/manifest.json`에 있는 이미지와 `vendor/mediapipe` 파일 중 빠진 것만 받아 둠

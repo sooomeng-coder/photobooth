@@ -253,6 +253,20 @@
   #retakeLayer button { position: absolute; border: 0; background: transparent; cursor: pointer; border-radius: 4px; }
   #retakeLayer button:hover, #retakeLayer button:focus-visible { outline: 3px solid #00e83a; background: rgba(0,232,58,.15); }
   #retakeLayer.used button { display: none; }
+  #retakeLayer button.sel { outline: 5px solid #00e83a; background: rgba(0,232,58,.28); }
+  #retakeLayer button.sel::after { content: '✓'; position: absolute; right: 6%; top: 5%; width: 2em; height: 2em; border-radius: 50%;
+    background: #00e83a; color: #fff; font: 900 clamp(12px, 2vmin, 20px)/2em -apple-system, sans-serif; text-align: center; }
+  #reshootBtn { display: none; white-space: nowrap; letter-spacing: 0; padding: .55em 1.1em; font-size: clamp(14px, 2.4vmin, 22px); background: #fff; color: #111; }
+  #resultScreen.sheetMode #reshootBtn { display: inline-block; }
+  #reshootBtn:disabled { opacity: .45; }
+  #doneLayer { position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; }
+  #doneLayer.hidden { display: none; }
+  #doneBox { background: #fff; color: #111; border-radius: 22px; padding: 34px 40px; text-align: center; font-family: -apple-system, sans-serif;
+    width: min(520px, 86vw); display: flex; flex-direction: column; gap: 14px; align-items: center; }
+  #doneBox h2 { margin: 0; font-size: clamp(22px, 4vmin, 34px); }
+  #doneMsg { font-size: clamp(14px, 2.4vmin, 20px); color: #555; min-height: 1.4em; }
+  #doneOk { margin-top: 8px; font-size: clamp(20px, 3.6vmin, 30px); font-weight: 800; padding: .5em 2.6em; border-radius: 999px; border: 0;
+    background: #111; color: #fff; }
 
   /* 디자인 이미지로 바꾼 요소 (assets/ui/manifest.json, 디자인/ 폴더) */
   .skin { background-color: transparent !important; background-position: center !important; background-size: contain !important;
@@ -362,6 +376,7 @@
         <button id="adjReset">이 프레임 초기화</button>
         <button id="adjCopy">전체 설정 복사</button>
         <button id="adjClose">닫기</button>
+        <button id="upUrlBtn">업로드 주소</button>
       </div>
       <div id="adjMsg"></div>
     </div>
@@ -381,26 +396,34 @@
     <div class="btnRow">
       <button id="saveBtn" class="btn save">SAVE</button>
       <button id="retakeBtn" class="btn retake">RETAKE</button>
+      <button id="reshootBtn" class="btn" disabled></button>
       <span id="sheetHint"></span>
     </div>
     <button class="home" data-home aria-label="처음으로">⌂</button>
   </div>
 </section>
 
+<div id="doneLayer" class="hidden"><div id="doneBox">
+  <h2>사진을 저장했어요</h2>
+  <div id="doneMsg"></div>
+  <button id="doneOk">확인</button>
+</div></div>
 <div id="flash"></div>
 <video id="video" playsinline webkit-playsinline muted autoplay style="position:fixed;left:0;top:0;width:2px;height:2px;opacity:0.01;pointer-events:none;z-index:-1"></video>
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.25';
+const APP_VERSION = 'v4.26';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
   START_SUB: '찾아와주셔서 감사합니다. 이용 시간은 5분입니다.',
-  START_MODES: ['single', '9'],   // 시작 화면에 보여줄 모드 (4컷을 다시 켜려면 '4' 추가)
-  COUNTDOWN: 5,          // 카운트다운 초 (1장, 그리고 4컷/9컷의 첫 컷)
-  CUT_COUNTDOWN: 3,      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초
-  MAX_RETAKE: 1,         // 다시 찍기 허용 횟수
+  START_MODES: ['9'],    // 시작 화면에 보여줄 모드 ('single' 1컷, '4' 4컷도 가능). 하나면 처음부터 골라져 있음
+  COUNTDOWN: 8,          // 카운트다운 초 (1장, 그리고 4컷/9컷의 첫 컷)
+  CUT_COUNTDOWN: 8,      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초 (셔터 안 눌러도 자동 시작)
+  MAX_RETAKE: 2,         // 다시 찍기 허용 횟수 (9컷: 여러 컷을 골라 한 번에 = 1회)
+  // 사진 업로드 (v4.26): 구글 앱스크립트 웹앱 주소 (tools/drive-upload.gs). ⚙ 패널 "업로드 주소"로 기기에서 바꿀 수도 있음
+  UPLOAD_URL: '',
   FILE_PREFIX: 'photobooth',
 };
 const IMG_START_BG = 'assets/start-bg.jpg';  // 시작 화면 기본 배경 (디자인/시작화면에 올리면 그걸로 바뀜)
@@ -1338,10 +1361,12 @@ function buildFrameList() {
   });
 }
 
+const defaultStartMode = () => CONFIG.START_MODES.length === 1 ? CONFIG.START_MODES[0] : null;
 function goHome() {
   busy = false; retakesLeft = CONFIG.MAX_RETAKE; resultBlob = null; session = null;
   setCutMode(false);
-  pickStartMode(null);
+  $('doneLayer').classList.add('hidden');
+  pickStartMode(defaultStartMode());
   show('start');
 }
 function goBackToFrames() {
@@ -1493,7 +1518,7 @@ async function enterCut(k) {
 function renderCutBar() {
   const { n, idx, picks, shots, retakeIdx } = session;
   $('cutCount').innerHTML = retakeIdx != null
-    ? `<b>${idx + 1}</b>번째 컷 다시 찍기`
+    ? `다시 찍기 <b>${session.retakeTotal - session.retakeQueue.length}</b> / ${session.retakeTotal} (${idx + 1}번째 컷)`
     : `<b>${idx + 1}</b> / ${n} 번째 사진`;
   const box = $('cutThumbs');
   box.textContent = '';
@@ -1535,8 +1560,11 @@ async function onCutShot(out) {
   t.getContext('2d').drawImage(out, 0, 0, t.width, t.height);
   out.thumb = t.toDataURL('image/jpeg', 0.8);
   session.shots[session.idx] = out;
-  if (session.retakeIdx != null) { session.retakeIdx = null; return finishSheet(); }
-  if (session.idx + 1 < session.n) { await wait(700); return enterCut(session.idx + 1); }
+  if (session.retakeIdx != null) {
+    if (session.retakeQueue && session.retakeQueue.length) { await wait(700); return nextRetake(); }
+    session.retakeIdx = null; return finishSheet();
+  }
+  if (session.idx + 1 < session.n) { await wait(700); await enterCut(session.idx + 1); return autoShoot(); }
   return finishSheet();
 }
 
@@ -1598,11 +1626,15 @@ async function finishSheet() {
     Object.assign(b.style, { left: cell.x / SHEET.W * 100 + '%', top: cell.y / SHEET.H * 100 + '%',
       width: cell.w / SHEET.W * 100 + '%', height: cell.h / SHEET.H * 100 + '%' });
     b.setAttribute('aria-label', `${cell.i + 1}번째 컷 다시 찍기`);
-    b.addEventListener('click', () => retakeCut(cell.i));
+    b.addEventListener('click', () => toggleRetake(cell.i, b));
     layer.appendChild(b);
   }
+  session.retakeSel = new Set();
+  $('reshootBtn').classList.toggle('hidden', session.retakeLeft <= 0);
+  $('reshootBtn').style.display = session.retakeLeft > 0 ? '' : 'none';
+  updateReshoot();
   $('sheetHint').textContent = session.retakeLeft > 0
-    ? '마음에 안 드는 컷을 누르면 다시 찍을 수 있어요 (1번)' : '다시 찍기를 사용했어요';
+    ? `다시 찍을 컷을 눌러 고르세요 (여러 개 가능, 남은 횟수 ${session.retakeLeft}번)` : '다시 찍기를 다 사용했어요';
   busy = false;
   show('result');
 }
@@ -1701,11 +1733,37 @@ async function composeStrip() {
   return c;
 }
 
-function retakeCut(k) {
+// v4.26: 결과 시트에서 다시 찍을 컷을 여러 개 고른 뒤 한 번에 (시트당 MAX_RETAKE번)
+function toggleRetake(k, b) {
   if (!session || session.retakeLeft <= 0 || busy) return;
+  const s = session.retakeSel;
+  if (s.has(k)) s.delete(k); else s.add(k);
+  b.classList.toggle('sel', s.has(k));
+  updateReshoot();
+}
+function updateReshoot() {
+  const n = session && session.retakeSel ? session.retakeSel.size : 0, r = $('reshootBtn');
+  r.disabled = !n;
+  r.textContent = n ? `${n}컷 다시 찍기` : '다시 찍을 컷을 눌러 주세요';
+}
+function startRetakes() {
+  if (!session || busy || session.retakeLeft <= 0 || !session.retakeSel || !session.retakeSel.size) return;
   session.retakeLeft--;
-  session.retakeIdx = k;
-  enterCut(k);
+  session.retakeQueue = [...session.retakeSel].sort((a, b) => a - b);
+  session.retakeTotal = session.retakeQueue.length;
+  session.retakeSel = new Set();
+  nextRetake();
+}
+async function nextRetake() {
+  session.retakeIdx = session.retakeQueue.shift();
+  await enterCut(session.retakeIdx);
+  autoShoot();
+}
+// 다음 컷은 셔터를 안 눌러도 카운트다운 시작
+async function autoShoot() {
+  await wait(400);
+  for (let i = 0; i < 50 && !video.videoWidth; i++) await wait(100);
+  if (screens.shoot.classList.contains('active') && !busy) shoot();
 }
 
 /* ================= 촬영 ================= */
@@ -1785,6 +1843,89 @@ function save() {
   a.href = URL.createObjectURL(resultBlob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  // v4.26: 드라이브에 올리고(실패하면 기기에 모아 뒀다가 다시 시도), 확인을 누르면 처음 화면으로
+  const msg = $('doneMsg');
+  $('doneLayer').classList.remove('hidden');
+  if (!uploadUrl()) { msg.textContent = ''; return; }
+  msg.textContent = '드라이브에 올리는 중…';
+  queueUpload(name.replace(/\.png$/, '.jpg'), resultBlob)
+    .then(ok => { msg.textContent = ok ? '드라이브에 올렸어요 ✓' : '인터넷이 되면 자동으로 드라이브에 올라가요'; })
+    .catch(() => { msg.textContent = '인터넷이 되면 자동으로 드라이브에 올라가요'; });
+}
+
+/* ================= 드라이브 업로드 (v4.26) =================
+   구글 앱스크립트 웹앱(tools/drive-upload.gs)으로 JPEG를 보냄. 못 보낸 건 IndexedDB에 두고 30초마다/인터넷 연결 시 다시 보냄 */
+const UP_LS = 'photobooth.uploadUrl';
+function uploadUrl() { try { return localStorage.getItem(UP_LS) || CONFIG.UPLOAD_URL; } catch (e) { return CONFIG.UPLOAD_URL; } }
+let upDbP = null, upBusy = null, upTimer = 0, upPending = 0;
+function upDB() {
+  return upDbP || (upDbP = new Promise((res, rej) => {
+    const r = indexedDB.open('photobooth-upload', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('q', { keyPath: 'name' });
+    r.onsuccess = () => res(r.result); r.onerror = () => { upDbP = null; rej(r.error); };
+  }));
+}
+async function upStore(mode, fn) {
+  const db = await upDB();
+  return new Promise((res, rej) => {
+    const t = db.transaction('q', mode), req = fn(t.objectStore('q'));
+    t.oncomplete = () => res(req && req.result); t.onerror = () => rej(t.error);
+  });
+}
+async function toJpeg(blob) {
+  const img = await createImageBitmap(blob);
+  const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+  c.getContext('2d').drawImage(img, 0, 0);
+  return new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
+}
+const blobB64 = b => new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(',')[1]); f.onerror = rej; f.readAsDataURL(b); });
+async function sendUpload(item) {
+  const url = uploadUrl(); if (!url) return false;
+  const r = await fetch(url, { method: 'POST', body: JSON.stringify({ name: item.name, mime: item.blob.type || 'image/jpeg', data: await blobB64(item.blob) }) });
+  const j = await r.json().catch(() => ({}));
+  return !!j.ok;
+}
+function upLabel() { offlineText = upPending ? `업로드 대기 ${upPending}` : offlineText.replace(/^업로드 대기 \d+$/, ''); renderVersion(); }
+async function queueUpload(name, blob) {
+  const jpg = await toJpeg(blob).catch(() => blob);
+  let stored = true;
+  try { await upStore('readwrite', s => s.put({ name, blob: jpg, at: Date.now() })); } catch (e) { stored = false; }
+  if (!stored) { try { return await sendUpload({ name, blob: jpg }); } catch (e) { return false; } }
+  await flushUploads();
+  const left = await upStore('readonly', s => s.get(name)).catch(() => null);
+  return !left;
+}
+function flushUploads() {
+  if (upBusy) return upBusy;
+  upBusy = (async () => {
+    clearTimeout(upTimer);
+    try {
+      const items = await upStore('readonly', s => s.getAll());
+      upPending = items.length;
+      for (const it of items) {
+        let ok = false;
+        try { ok = await sendUpload(it); } catch (e) { ok = false; }
+        if (!ok) break;
+        await upStore('readwrite', s => s.delete(it.name));
+        upPending--;
+      }
+    } catch (e) { console.warn('업로드 실패', e); }
+    upLabel();
+    if (upPending && uploadUrl()) upTimer = setTimeout(flushUploads, 30000);
+  })().finally(() => { upBusy = null; });
+  return upBusy;
+}
+function setupUpload() {
+  window.addEventListener('online', flushUploads);
+  $('doneOk').addEventListener('click', goHome);
+  $('upUrlBtn').addEventListener('click', () => {
+    const v = prompt('드라이브 업로드 주소 (구글 앱스크립트 웹앱 URL, 비우면 끔)', uploadUrl() || '');
+    if (v == null) return;
+    try { if (v.trim()) localStorage.setItem(UP_LS, v.trim()); else localStorage.removeItem(UP_LS); } catch (e) {}
+    $('adjMsg').textContent = v.trim() ? '업로드 주소를 저장했어요' : '업로드를 껐어요';
+    if (v.trim()) flushUploads();
+  });
+  if (uploadUrl()) flushUploads();
 }
 
 function showDblHint() {
@@ -1890,6 +2031,7 @@ async function openTest() {
     b.classList.toggle('hidden', !CONFIG.START_MODES.includes(b.dataset.mode));
     b.addEventListener('click', () => pickStartMode(b.dataset.mode));
   });
+  pickStartMode(defaultStartMode());
   const [rawFrames, rawCuts] = await Promise.all([loadFrames(), loadCuts()]);
   mergeLists(rawFrames, rawCuts);
   buildFrameList();
@@ -1917,6 +2059,8 @@ async function openTest() {
   setupAdjPanel();
   $('saveBtn').addEventListener('click', save);
   $('retakeBtn').addEventListener('click', retake);
+  $('reshootBtn').addEventListener('click', startRetakes);
+  setupUpload();
   document.querySelectorAll('[data-home]').forEach(b => b.addEventListener('click', goHome));
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBackToFrames));
   window.addEventListener('hashchange', openTest);
