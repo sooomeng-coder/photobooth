@@ -15,6 +15,9 @@ git checkout <버전의 커밋> -- index.html tools .github
 git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 ```
 
+## v4.27 — 9컷 칼선
+- 9컷 시트에 자르는 선(칸 경계마다 종이 끝까지 얇은 회색 선, 세로선은 위 로고 띠는 안 가로지름) `drawCutLines()`
+
 ## v4.26 — 현장 운영 (10/25 새벽)
 - **드라이브 업로드**: SAVE를 누르면 기기 저장 + 구글 드라이브(내 드라이브/302호 포토부스 촬영/날짜)에 JPEG로 올림 → "사진을 저장했어요 [확인]" → 확인 누르면 처음 화면
   - 받는 쪽: `tools/drive-upload.gs`(구글 앱스크립트 웹앱). 주소는 `CONFIG.UPLOAD_URL` 또는 ⚙ 패널 [업로드 주소](기기 localStorage `photobooth.uploadUrl`)

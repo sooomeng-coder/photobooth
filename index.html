@@ -413,7 +413,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.26';
+const APP_VERSION = 'v4.27';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1607,7 +1607,21 @@ async function composeSheet() {
     const shot = session.shots[cell.i];
     if (shot) ctx.drawImage(shot, cell.x * S, cell.y * S, cell.w * S, cell.h * S);
   }
+  if (session.mode === '9') drawCutLines(ctx, L.cells, S, c.width, c.height);
   return c;
+}
+// v4.27: 9컷 자르는 선(칼선) — 칸 경계마다 종이 끝까지 가는 얇은 회색 선
+function drawCutLines(ctx, cells, S, W, H) {
+  const xs = new Set(), ys = new Set();
+  for (const c of cells) { xs.add(c.x); xs.add(c.x + c.w); ys.add(c.y); ys.add(c.y + c.h); }
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,120,120,.8)'; ctx.lineWidth = 1.5 * S;
+  ctx.beginPath();
+  const top = Math.min(...cells.map(c => c.y)) * S;  // 위 로고 띠는 안 가로지름
+  for (const x of xs) { ctx.moveTo(x * S, top); ctx.lineTo(x * S, H); }
+  for (const y of ys) { ctx.moveTo(0, y * S); ctx.lineTo(W, y * S); }
+  ctx.stroke();
+  ctx.restore();
 }
 
 async function finishSheet() {
