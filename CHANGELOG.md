@@ -19,6 +19,7 @@ git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 - **드라이브 업로드**: SAVE를 누르면 기기 저장 + 구글 드라이브(내 드라이브/302호 포토부스 촬영/날짜)에 JPEG로 올림 → "사진을 저장했어요 [확인]" → 확인 누르면 처음 화면
   - 받는 쪽: `tools/drive-upload.gs`(구글 앱스크립트 웹앱). 주소는 `CONFIG.UPLOAD_URL` 또는 ⚙ 패널 [업로드 주소](기기 localStorage `photobooth.uploadUrl`)
   - 못 올린 사진은 IndexedDB(`photobooth-upload`)에 두고 30초마다/인터넷 연결 시 다시 보냄. 버전 라벨에 "업로드 대기 N"
+- 업로드 주소 연결(`CONFIG.UPLOAD_URL`). 카운트다운 숫자 8~1 새 디자인(`디자인/카운트다운_6~8` 폴더 추가)
 - 시작 화면: 9컷만(`START_MODES: ['9']`), 처음부터 골라져 있어 START만 누르면 됨
 - 카운트다운 모든 컷 8초, 두 번째 컷부터는 셔터 안 눌러도 자동 시작
 - 다시 찍기: 결과 시트에서 컷을 여러 개 골라 [N컷 다시 찍기] → 고른 컷만 연속 촬영(자동 8초). 시트당 2번(`MAX_RETAKE: 2`)

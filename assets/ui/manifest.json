@@ -1,9 +1,12 @@
 {
  "save": "assets/ui/btn-save.png?v=abc85e70",
  "retake": "assets/ui/btn-retake.png?v=a99b976f",
- "count5": "assets/ui/count-5.png?v=178e8bee",
- "count4": "assets/ui/count-4.png?v=77cf54c9",
- "count3": "assets/ui/count-3.png?v=4df289ea",
- "count2": "assets/ui/count-2.png?v=0885fa16",
- "count1": "assets/ui/count-1.png?v=d9311c09"
+ "count8": "assets/ui/count-8.png?v=eba6611c",
+ "count7": "assets/ui/count-7.png?v=8697d3a6",
+ "count6": "assets/ui/count-6.png?v=f310e9ff",
+ "count5": "assets/ui/count-5.png?v=469b6134",
+ "count4": "assets/ui/count-4.png?v=f1f7b01c",
+ "count3": "assets/ui/count-3.png?v=1e0fec15",
+ "count2": "assets/ui/count-2.png?v=a5364e38",
+ "count1": "assets/ui/count-1.png?v=5188988f"
 }
