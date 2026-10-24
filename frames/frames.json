@@ -24,5 +24,14 @@
   {"name": "234", "dir": "frames/234", "live": true, "src": "frames/234/frame.png", "background": "frames/234/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/234.jpg"},
   {"name": "235", "dir": "frames/235", "live": true, "src": "frames/235/frame.png", "background": "frames/235/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/235.jpg"},
   {"name": "236", "dir": "frames/236", "live": true, "src": "frames/236/frame.png", "background": "frames/236/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/236.jpg"},
-  {"name": "243", "dir": "frames/243", "live": true, "src": "frames/243/frame.png", "background": "frames/243/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/243.jpg"}
+  {"name": "243", "dir": "frames/243", "live": true, "src": "frames/243/frame.png", "background": "frames/243/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/243.jpg"},
+  {"name": "배경 마인크래프트", "dir": "frames/배경 마인크래프트", "live": true, "src": "frames/배경 마인크래프트/frame.png", "background": "frames/배경 마인크래프트/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 마인크래프트.jpg"},
+  {"name": "배경 민트 도트", "dir": "frames/배경 민트 도트", "live": true, "src": "frames/배경 민트 도트/frame.png", "background": "frames/배경 민트 도트/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 민트 도트.jpg"},
+  {"name": "배경 반짝 별", "dir": "frames/배경 반짝 별", "live": true, "src": "frames/배경 반짝 별/frame.png", "background": "frames/배경 반짝 별/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 반짝 별.jpg"},
+  {"name": "배경 별똥별", "dir": "frames/배경 별똥별", "live": true, "src": "frames/배경 별똥별/frame.png", "background": "frames/배경 별똥별/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 별똥별.jpg"},
+  {"name": "배경 보라 도트", "dir": "frames/배경 보라 도트", "live": true, "src": "frames/배경 보라 도트/frame.png", "background": "frames/배경 보라 도트/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 보라 도트.jpg"},
+  {"name": "배경 연두 도트", "dir": "frames/배경 연두 도트", "live": true, "src": "frames/배경 연두 도트/frame.png", "background": "frames/배경 연두 도트/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 연두 도트.jpg"},
+  {"name": "배경 오로라", "dir": "frames/배경 오로라", "live": true, "src": "frames/배경 오로라/frame.png", "background": "frames/배경 오로라/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 오로라.jpg"},
+  {"name": "배경 파랑 도트", "dir": "frames/배경 파랑 도트", "live": true, "src": "frames/배경 파랑 도트/frame.png", "background": "frames/배경 파랑 도트/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 파랑 도트.jpg"},
+  {"name": "배경 파스텔 별", "dir": "frames/배경 파스텔 별", "live": true, "src": "frames/배경 파스텔 별/frame.png", "background": "frames/배경 파스텔 별/background.jpg", "width": 1536, "height": 2048, "thumb": "frames/thumbs/배경 파스텔 별.jpg"}
 ]

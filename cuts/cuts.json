@@ -284,5 +284,14 @@
   {"name": "249", "src": "cuts/cut286.png", "thumb": "cuts/thumbs/cut286.jpg"},
   {"name": "250", "src": "cuts/cut287.png", "thumb": "cuts/thumbs/cut287.jpg"},
   {"name": "251", "src": "cuts/cut288.png", "thumb": "cuts/thumbs/cut288.jpg"},
-  {"name": "252", "src": "cuts/cut289.png", "thumb": "cuts/thumbs/cut289.jpg", "shootRotate": -90}
+  {"name": "252", "src": "cuts/cut289.png", "thumb": "cuts/thumbs/cut289.jpg", "shootRotate": -90},
+  {"name": "배경 마인크래프트", "frame": "배경 마인크래프트", "src": "frames/thumbs/배경 마인크래프트.jpg", "thumb": "cuts/thumbs/frame_배경_마인크래프트.jpg"},
+  {"name": "배경 민트 도트", "frame": "배경 민트 도트", "src": "frames/thumbs/배경 민트 도트.jpg", "thumb": "cuts/thumbs/frame_배경_민트_도트.jpg"},
+  {"name": "배경 반짝 별", "frame": "배경 반짝 별", "src": "frames/thumbs/배경 반짝 별.jpg", "thumb": "cuts/thumbs/frame_배경_반짝_별.jpg"},
+  {"name": "배경 별똥별", "frame": "배경 별똥별", "src": "frames/thumbs/배경 별똥별.jpg", "thumb": "cuts/thumbs/frame_배경_별똥별.jpg"},
+  {"name": "배경 보라 도트", "frame": "배경 보라 도트", "src": "frames/thumbs/배경 보라 도트.jpg", "thumb": "cuts/thumbs/frame_배경_보라_도트.jpg"},
+  {"name": "배경 연두 도트", "frame": "배경 연두 도트", "src": "frames/thumbs/배경 연두 도트.jpg", "thumb": "cuts/thumbs/frame_배경_연두_도트.jpg"},
+  {"name": "배경 오로라", "frame": "배경 오로라", "src": "frames/thumbs/배경 오로라.jpg", "thumb": "cuts/thumbs/frame_배경_오로라.jpg"},
+  {"name": "배경 파랑 도트", "frame": "배경 파랑 도트", "src": "frames/thumbs/배경 파랑 도트.jpg", "thumb": "cuts/thumbs/frame_배경_파랑_도트.jpg"},
+  {"name": "배경 파스텔 별", "frame": "배경 파스텔 별", "src": "frames/thumbs/배경 파스텔 별.jpg", "thumb": "cuts/thumbs/frame_배경_파스텔_별.jpg"}
 ]
