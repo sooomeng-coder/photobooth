@@ -13,7 +13,6 @@
   {"name": "모릅니다", "dir": "frames/모릅니다", "live": true, "src": "frames/모릅니다/frame.png", "background": "frames/모릅니다/background.jpg", "width": 1640, "height": 2360, "copies": [{"box": [342, 574, 629, 1238], "rotate": 0, "align": "top"}], "thumb": "frames/thumbs/모릅니다.jpg"},
   {"name": "바이러스 아님", "dir": "frames/바이러스 아님", "live": true, "src": "frames/바이러스 아님/frame.png", "background": "frames/바이러스 아님/background.jpg", "width": 1640, "height": 2360, "copies": [{"box": [733, 711, 374, 357], "rotate": 0, "top": 0.42, "align": "bottom"}], "thumb": "frames/thumbs/바이러스 아님.jpg"},
   {"name": "발등튀김", "dir": "frames/발등튀김", "live": true, "background": "frames/발등튀김/background.jpg", "width": 1640, "height": 2360, "copies": [{"box": [354, 690, 839, 1399], "rotate": 0, "align": "top", "fire": true}], "thumb": "frames/thumbs/발등튀김.jpg"},
-  {"name": "공주의 규칙", "strip": {"designs": ["strips/공주의 규칙/pink.jpg", "strips/공주의 규칙/blue.jpg"], "holes": [[35.3, 194.8, 529.4, 316], [35.3, 584.0, 529.4, 316], [35.3, 975.1, 529.4, 316], [35.3, 1366.6, 529.4, 316]]}, "thumb": "frames/thumbs/공주의 규칙.jpg"},
   {"name": "이중노출", "double": {"width": 2360, "height": 1640, "preview": 0.4, "mix": 0.5}, "thumb": "frames/thumbs/이중노출.jpg"},
   {"name": "별 핑크", "src": "frames/frame10.png", "thumb": "frames/thumbs/frame10.jpg"},
   {"name": "도트 별", "dir": "frames/도트 별", "live": true, "src": "frames/도트 별/frame.png", "background": "frames/도트 별/background.jpg", "width": 1800, "height": 2400, "thumb": "frames/thumbs/도트 별.jpg"},

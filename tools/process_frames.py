@@ -209,7 +209,7 @@ def sync_cut_refs():
         (ROOT / tp).parent.mkdir(parents=True, exist_ok=True)
         im.resize((240, 320), Image.LANCZOS).save(ROOT / tp, quality=85)
         item = {'name': n, 'frame': n, 'src': f['thumb'], 'thumb': tp}
-        if f.get('strip') or f.get('double'):
+        if f.get('strip'):
             item['only1'] = True
         cuts.append(item)
         print(f'전체 목록에 추가: {n}')

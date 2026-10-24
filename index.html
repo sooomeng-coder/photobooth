@@ -417,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.32';
+const APP_VERSION = 'v4.33';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1357,7 +1357,7 @@ function mergeLists(rawFrames, rawCuts) {
   }
   for (const f of rawFrames) {  // cuts.json에 아직 없는 1컷 프레임도 빠짐없이 뒤에 붙임
     if (used.has(f.name)) continue;
-    cuts.push({ name: f.name, frame: f.name, src: f.thumb || f.src, thumb: f.thumb, only1: !!(f.strip || f.double) });
+    cuts.push({ name: f.name, frame: f.name, src: f.thumb || f.src, thumb: f.thumb, only1: !!f.strip });
     frames.push(f);
   }
   CUTS = cuts; FRAMES = frames;
@@ -1533,6 +1533,7 @@ async function enterCut(k) {
   screens.shoot.querySelector('.stage').style.setProperty('--ar', cur.W / cur.H);  // 누운 컷은 가로로
   renderCutBar();
   show('shoot');
+  if (cur.double) { cur.ghost = null; showDblHint(); }  // v4.33: 9컷에서도 이중노출 (1)(2) 두 번 찍기
 }
 
 function renderCutBar() {
@@ -1848,7 +1849,9 @@ async function shoot() {
       const g = document.createElement('canvas'); g.width = cur.W; g.height = cur.H;
       drawMirroredCover(g.getContext('2d'), video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H, camAdj());
       cur.ghost = g; showDblHint();
-      $('shutterBtn').disabled = false; busy = false; return;
+      $('shutterBtn').disabled = false; busy = false;
+      if (session) autoShoot();  // 9컷: 두 번째도 셔터 없이 바로 카운트다운
+      return;
     }
     // 두 번째 사진: 카메라 위에 첫 사진을 반투명으로 겹쳐 저장
     const o = out.getContext('2d');
