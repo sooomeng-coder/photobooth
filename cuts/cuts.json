@@ -210,5 +210,6 @@
   {"name": "모릅니다", "frame": "모릅니다", "src": "frames/thumbs/모릅니다.jpg", "thumb": "cuts/thumbs/frame_모릅니다.jpg"},
   {"name": "바이러스 아님", "frame": "바이러스 아님", "src": "frames/thumbs/바이러스 아님.jpg", "thumb": "cuts/thumbs/frame_바이러스_아님.jpg"},
   {"name": "발등튀김", "frame": "발등튀김", "src": "frames/thumbs/발등튀김.jpg", "thumb": "cuts/thumbs/frame_발등튀김.jpg"},
-  {"name": "별 핑크", "frame": "별 핑크", "src": "frames/thumbs/frame10.jpg", "thumb": "cuts/thumbs/frame_별_핑크.jpg"}
+  {"name": "별 핑크", "frame": "별 핑크", "src": "frames/thumbs/frame10.jpg", "thumb": "cuts/thumbs/frame_별_핑크.jpg"},
+  {"name": "도트 별", "frame": "도트 별", "src": "frames/thumbs/도트 별.jpg", "thumb": "cuts/thumbs/frame_도트_별.jpg"}
 ]
