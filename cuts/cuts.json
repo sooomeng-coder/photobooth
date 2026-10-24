@@ -310,5 +310,9 @@
   {"name": "245", "src": "cuts/cut282.png", "thumb": "cuts/thumbs/cut282.jpg"},
   {"name": "246", "src": "cuts/cut283.png", "thumb": "cuts/thumbs/cut283.jpg"},
   {"name": "247", "src": "cuts/cut284.png", "thumb": "cuts/thumbs/cut284.jpg"},
-  {"name": "248", "src": "cuts/cut285.png", "thumb": "cuts/thumbs/cut285.jpg"}
+  {"name": "248", "src": "cuts/cut285.png", "thumb": "cuts/thumbs/cut285.jpg"},
+  {"name": "249", "src": "cuts/cut286.png", "thumb": "cuts/thumbs/cut286.jpg"},
+  {"name": "250", "src": "cuts/cut287.png", "thumb": "cuts/thumbs/cut287.jpg"},
+  {"name": "251", "src": "cuts/cut288.png", "thumb": "cuts/thumbs/cut288.jpg"},
+  {"name": "252", "src": "cuts/cut289.png", "thumb": "cuts/thumbs/cut289.jpg", "shootRotate": -90}
 ]
