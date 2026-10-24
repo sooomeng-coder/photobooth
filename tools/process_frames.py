@@ -15,7 +15,7 @@
 - 스티커 PNG    파일 이름 = 붙는 위치 (STICKERS 참고). 얼굴을 따라 움직임
 
 컷 프레임 (4컷/9컷 시트용): cuts/ 폴더
-- 새 이미지를 cutN.png로 바꾸고 3:4(768x1024)로 맞춤. 비율이 다르면 초록/투명 구멍이 가운데 오도록 잘라냄
+- 새 이미지를 cutN.png로 바꾸고 3:4(768x1024)로 맞춤. 비율이 다르면 자르지 않고 흰 여백으로 채움(v4.24)
 - 썸네일 cuts/thumbs/cutN.jpg, 목록 cuts/cuts.json
 
 디자인 이미지: 디자인/ 아래 용도별 폴더(DESIGN_TARGETS)에 아무 이름으로 한 장 올리면 크기를 맞춰 assets/로 복사하고
@@ -88,14 +88,19 @@ def hole_center(im):
 
 
 def fit_cut(im):
-    """3:4로 꽉 차게 자르고(구멍이 가운데 오도록) CUT_SIZE로 맞춤."""
+    """v4.24: 3:4(CUT_SIZE)에 자르지 않고 통째로 넣고, 남는 곳은 흰 배경으로 채움.
+    (예전엔 꽉 차게 확대해서 잘랐음 → 그림이 잘리는 문제)"""
     W, H = CUT_SIZE
-    s = max(W / im.width, H / im.height)
-    im = im.resize((max(W, round(im.width * s)), max(H, round(im.height * s))), Image.LANCZOS)
-    cx, cy = hole_center(im)
-    x = min(max(round(cx * im.width - W / 2), 0), im.width - W)
-    y = min(max(round(cy * im.height - H / 2), 0), im.height - H)
-    return im.crop((x, y, x + W, y + H))
+    s = min(W / im.width, H / im.height)
+    w, h = max(1, round(im.width * s)), max(1, round(im.height * s))
+    im = im.convert('RGBA').resize((w, h), Image.LANCZOS)
+    bg = Image.new('RGBA', (W, H), (255, 255, 255, 255))
+    bg.alpha_composite(im, ((W - w) // 2, (H - h) // 2))
+    # 투명 구멍은 살려야 하므로: 붙인 영역의 알파는 원본 알파 그대로
+    a = Image.new('L', (W, H), 255)
+    a.paste(im.getchannel('A'), ((W - w) // 2, (H - h) // 2))
+    bg.putalpha(a)
+    return bg
 
 
 def write_list(path, items):
