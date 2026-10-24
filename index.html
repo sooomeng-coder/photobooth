@@ -75,6 +75,7 @@
     background: rgba(20,20,20,.88); color: #fff; border-radius: 14px; padding: 12px 14px; font: 15px/1.4 -apple-system, sans-serif;
     display: flex; flex-direction: column; gap: 10px; }
   #adjPanel.hidden { display: none; }
+  .pc.only1 { opacity: .3; pointer-events: none; }
   /* 점검 모드 (v4.21): index.html#test-c-12 / #test-f-3 */
   #testBar { position: absolute; left: 50%; bottom: 2.5%; transform: translateX(-50%); z-index: 7; display: flex; gap: 8px; align-items: center;
     background: rgba(20,20,20,.85); color: #fff; border-radius: 999px; padding: 6px 8px; font: 700 16px -apple-system, sans-serif; }
@@ -391,7 +392,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.21';
+const APP_VERSION = 'v4.22';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1231,6 +1232,7 @@ async function selectFrame(i) {
 }
 
 function prepFrame(f) {
+  if (f.cutFrame) return prepareStatic(f).then(c => rotateForShoot(c, f.shootRotate)).then(c => ({ ...c, rotate: 0 }));
   return f.double ? Promise.resolve({ W: f.double.width || 2360, H: f.double.height || 1640, double: f.double })
     : f.live ? prepareLive(f) : prepareStatic(f);
 }
@@ -1286,6 +1288,34 @@ function alphaBox(img, W, H) {
   return { x: x0 * s, y: y0 * s, w: (x1 - x0 + 1) * s, h: (y1 - y0 + 1) * s };
 }
 
+/* v4.22: 프레임 목록 하나로 통일. cuts.json = 전체 목록(번호 = 순서).
+   1컷 화면도 같은 순서·같은 번호로 보여줌 → FRAMES[i]와 CUTS[i]가 같은 프레임.
+   - 컷 파일 항목은 1컷에서도 그대로 프레임으로 씀(cutFrame)
+   - {frame: 이름} 항목은 frames.json의 그 프레임(LIVE 등)
+   - only1(띠 4컷·이중노출)은 9컷에서 못 고름 */
+function mergeLists(rawFrames, rawCuts) {
+  const byName = new Map(rawFrames.map(f => [f.name, f]));
+  const used = new Set();
+  const cuts = [], frames = [];
+  for (const c of rawCuts) {
+    if (c.frame) {
+      const f = byName.get(c.frame);
+      if (!f) continue;
+      used.add(c.frame);
+      cuts.push(c); frames.push(f);
+    } else {
+      cuts.push(c);
+      frames.push({ name: c.name, src: c.src, thumb: c.thumb, shootRotate: c.shootRotate, cutFrame: true });
+    }
+  }
+  for (const f of rawFrames) {  // cuts.json에 아직 없는 1컷 프레임도 빠짐없이 뒤에 붙임
+    if (used.has(f.name)) continue;
+    cuts.push({ name: f.name, frame: f.name, src: f.thumb || f.src, thumb: f.thumb, only1: !!(f.strip || f.double) });
+    frames.push(f);
+  }
+  CUTS = cuts; FRAMES = frames;
+}
+
 function buildFrameList() {
   const list = $('frameList');
   FRAMES.forEach((f, i) => {
@@ -1293,7 +1323,7 @@ function buildFrameList() {
     b.className = 'frameCard';
     b.innerHTML = `<span class="num">${i + 1}</span><img alt=""><span class="label"></span>`;
     const im = b.querySelector('img');
-    im.decoding = 'async';
+    im.decoding = 'async'; im.loading = 'lazy';
     im.src = f.thumb || f.src || f.background;
     if (f.live) b.insertAdjacentHTML('beforeend', '<span class="liveBadge">LIVE</span>');
     if (f.strip) b.insertAdjacentHTML('beforeend', '<span class="liveBadge">4컷</span>');
@@ -1382,11 +1412,11 @@ function renderPick() {
   const from = pickPage * perPage(), to = Math.min(CUTS.length, from + perPage());
   for (let i = from; i < to; i++) {
     const b = document.createElement('button'), c = picks.filter(p => p === i).length;
-    b.className = 'pc' + (c ? ' picked' : '');
-    b.title = CUTS[i].name || '';
+    b.className = 'pc' + (c ? ' picked' : '') + (CUTS[i].only1 ? ' only1' : '');
+    b.title = CUTS[i].only1 ? '1컷 전용' : (CUTS[i].name || '');
     b.appendChild(cutFrameEl(i));
     b.insertAdjacentHTML('beforeend', `<span class="no">#${i + 1}</span>` + (c ? `<span class="count">${c > 1 ? '×' + c : '✓'}</span>` : ''));
-    b.addEventListener('click', () => { if (session && session.picks.length < session.n) { session.picks.push(i); renderPick(); } });
+    b.addEventListener('click', () => { if (CUTS[i].only1) return; if (session && session.picks.length < session.n) { session.picks.push(i); renderPick(); } });
     list.appendChild(b);
   }
   $('pageNo').textContent = `${pickPage + 1} / ${pageCount()}`;
@@ -1401,8 +1431,7 @@ const cutCache = new Map();
 async function prepareCut(i) {
   const cf = CUTS[i];
   if (cf && cf.frame) {
-    const j = FRAMES.findIndex(x => x.name === cf.frame);
-    if (j < 0) throw new Error('프레임 없음: ' + cf.frame);
+    const j = i;  // CUTS[i]와 FRAMES[i]는 같은 프레임 (mergeLists)
     if (!overlayCache.has(j)) overlayCache.set(j, await prepFrame(FRAMES[j]));
     return overlayCache.get(j);
   }
@@ -1847,7 +1876,8 @@ async function openTest() {
     b.classList.toggle('hidden', !CONFIG.START_MODES.includes(b.dataset.mode));
     b.addEventListener('click', () => pickStartMode(b.dataset.mode));
   });
-  [FRAMES, CUTS] = await Promise.all([loadFrames(), loadCuts()]);
+  const [rawFrames, rawCuts] = await Promise.all([loadFrames(), loadCuts()]);
+  mergeLists(rawFrames, rawCuts);
   buildFrameList();
   $('resultImg').src = '';
   $('version').textContent = APP_VERSION;

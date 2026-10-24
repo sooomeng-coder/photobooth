@@ -15,6 +15,13 @@ git checkout <버전의 커밋> -- index.html tools .github
 git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 ```
 
+## v4.22 — 프레임 목록 하나로 (1컷·9컷 공통 번호)
+- `cuts/cuts.json` = 전체 목록. 1컷 화면도 같은 순서·번호로 보여줌(`mergeLists()` → `FRAMES[i]`와 `CUTS[i]`가 같은 프레임)
+- 컷 파일 프레임도 1컷에서 찍힘(`cutFrame`, 결과는 10x15 인쇄 크기로 맞춤). 1컷 프레임은 전부 9컷에서도 고름
+- 띠 4컷(공주의 규칙)·이중노출은 `only1` → 9컷 목록에서 흐리게, 못 고름
+- `process_frames.py`의 `sync_cut_refs()`: 새 1컷 프레임이 오면 전체 목록에도 자동 등록
+- `review.html`도 전체 목록 하나로
+
 ## v4.21 — 프레임 점검표(review.html) + 점검 모드
 - `review.html`: 9컷·1컷 프레임 전부를 썸네일로. 프레임마다 OK/수정/삭제 + 메모(이 기기 localStorage `photobooth.review`), 배율 조정 여부 표시, 필터(미확인·배율 아직 등)
 - "결과 복사" → 삭제·수정 목록 + 배율 JSON을 한 번에 복사해서 Claude에게 보냄

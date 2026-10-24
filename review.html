@@ -59,8 +59,7 @@
   <textarea id="out" class="hidden" readonly></textarea>
 </header>
 <main>
-  <section><h2>9컷 프레임</h2><div class="grid" id="gridC"></div></section>
-  <section><h2>1컷 프레임</h2><div class="grid" id="gridF"></div></section>
+  <section><h2>전체 프레임 (1컷·9컷 공통 번호)</h2><div class="grid" id="gridC"></div></section>
 </main>
 <script>
 const LS_REVIEW = 'photobooth.review', LS_ADJ = 'photobooth.camAdjust';
@@ -75,18 +74,17 @@ const $ = (id) => document.getElementById(id);
 function zoomable(f) { return !f.live && !f.strip; }
 function adjOf(key) { return key ? (ADJ_LOCAL[key] || ADJ_BASE[key] || null) : null; }
 
+// v4.22: 앱과 같은 전체 목록 (cuts.json 순서 = 번호, 1컷·9컷 공통)
 function items() {
-  const out = [];
-  CUTS.forEach((c, i) => {
-    const ref = c.frame ? FRAMES.find(x => x.name === c.frame) : null;
-    out.push({ id: `c-${i + 1}`, kind: 'c', no: i + 1, name: c.name || '', thumb: c.thumb || c.src,
-      zoom: ref ? zoomable(ref) : true, live: ref ? !!ref.live : false, adj: adjOf(c.src), from1: !!ref });
-  });
-  FRAMES.forEach((f, i) => {
-    out.push({ id: `f-${i + 1}`, kind: 'f', no: i + 1, name: f.name || '', thumb: f.thumb || f.src,
-      zoom: zoomable(f), live: !!f.live, strip: !!f.strip, adj: adjOf(f.src) });
-  });
-  return out;
+  const byName = new Map(FRAMES.map(f => [f.name, f])), used = new Set(), list = [];
+  for (const c of CUTS) {
+    if (c.frame) { const f = byName.get(c.frame); if (!f) continue; used.add(c.frame); list.push([c, f]); }
+    else list.push([c, null]);
+  }
+  for (const f of FRAMES) if (!used.has(f.name)) list.push([{ name: f.name, frame: f.name, src: f.thumb || f.src, thumb: f.thumb, only1: !!(f.strip || f.double) }, f]);
+  return list.map(([c, f], i) => ({ id: `c-${i + 1}`, kind: 'c', no: i + 1, name: c.name || '', thumb: c.thumb || c.src,
+    zoom: f ? zoomable(f) : true, live: f ? !!f.live : false, strip: !!(f && (f.strip || f.double)), only1: !!c.only1,
+    adj: adjOf(c.src) || (f && adjOf(f.src)), from1: !!f }));
 }
 
 function pass(it) {
@@ -105,10 +103,8 @@ function render() {
   $('stats').innerHTML = `전체 <b>${all.length}</b> · 미확인 <b>${cnt.todo}</b> · OK <b>${cnt.ok}</b> · 수정 <b>${cnt.fix}</b> · 삭제 <b>${cnt.del}</b> · 배율 조정함 <b>${zoomed}</b>`;
   const F = [['all', '전체'], ['todo', '미확인'], ['ok', 'OK'], ['fix', '수정'], ['del', '삭제'], ['nozoom', '배율 아직']];
   $('filters').innerHTML = F.map(([k, t]) => `<button class="chip${filter === k ? ' on' : ''}" data-f="${k}">${t}</button>`).join('');
-  for (const [kind, grid] of [['c', $('gridC')], ['f', $('gridF')]]) {
-    grid.textContent = '';
-    for (const it of all.filter(x => x.kind === kind && pass(x))) grid.appendChild(card(it));
-  }
+  const grid = $('gridC'); grid.textContent = '';
+  for (const it of all.filter(pass)) grid.appendChild(card(it));
 }
 
 function card(it) {
@@ -116,7 +112,7 @@ function card(it) {
   const d = document.createElement('div');
   d.className = 'card' + (r.s ? ' s-' + r.s : ''); d.id = it.id;
   const img = document.createElement('img');
-  img.className = 'thumb' + (it.kind === 'f' ? ' wide' : ''); img.loading = 'lazy'; img.alt = ''; img.src = it.thumb;
+  img.className = 'thumb'; img.loading = 'lazy'; img.alt = ''; img.src = it.thumb;
   d.appendChild(img);
   const t = document.createElement('div'); t.className = 'title';
   t.innerHTML = `<span class="no">#${it.no}</span>`;
@@ -124,10 +120,10 @@ function card(it) {
   d.appendChild(t);
   const tags = document.createElement('div'); tags.className = 'tags';
   if (it.live) tags.insertAdjacentHTML('beforeend', '<span class="tag live">사람 오려내기 · 거리로 맞춤</span>');
-  else if (it.strip) tags.insertAdjacentHTML('beforeend', '<span class="tag live">띠 4컷</span>');
+  else if (it.strip) tags.insertAdjacentHTML('beforeend', '<span class="tag live">1컷 전용</span>');
   else if (it.adj) tags.insertAdjacentHTML('beforeend', `<span class="tag z">배율 ${(+it.adj.z).toFixed(2)}${it.adj.x || it.adj.y ? ' · 이동' : ''}</span>`);
   else tags.insertAdjacentHTML('beforeend', '<span class="tag">배율 기본</span>');
-  if (it.from1) tags.insertAdjacentHTML('beforeend', '<span class="tag">1컷에서 옴</span>');
+
   d.appendChild(tags);
   const acts = document.createElement('div'); acts.className = 'acts';
   for (const [s, label] of [['ok', 'OK'], ['fix', '수정'], ['del', '삭제']]) {
@@ -155,7 +151,7 @@ function card(it) {
 
 function report() {
   const all = items(), lines = [];
-  const label = it => `${it.kind === 'c' ? '9컷' : '1컷'} #${it.no} ${it.name}`;
+  const label = it => `#${it.no} ${it.name}`;
   const pick = s => all.filter(it => (REV[it.id] || {}).s === s);
   const del = pick('del'), fix = pick('fix');
   lines.push(`[삭제 ${del.length}개]`); del.forEach(it => lines.push('- ' + label(it)));

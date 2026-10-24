@@ -178,6 +178,40 @@ DESIGN_TARGETS = {
 }
 
 
+def sync_cut_refs():
+    """v4.22: 모든 1컷 프레임을 전체 목록(cuts.json)에도 {frame: 이름}으로 등록 → 9컷에서도 고를 수 있음.
+    9컷 고르기용 썸네일은 가로면 세워서 3:4로 자른 cuts/thumbs/frame_<이름>.jpg. 띠 4컷·이중노출은 only1."""
+    if not LIST.exists() or not CUT_LIST.exists():
+        return
+    frames = json.loads(LIST.read_text(encoding='utf-8'))
+    cuts = json.loads(CUT_LIST.read_text(encoding='utf-8'))
+    have = {c.get('frame') for c in cuts}
+    changed = False
+    for f in frames:
+        n = f.get('name')
+        if not n or n in have or not f.get('thumb') or not (ROOT / f['thumb']).exists():
+            continue
+        im = Image.open(ROOT / f['thumb']).convert('RGB')
+        if im.width > im.height:
+            im = im.rotate(-90, expand=True)
+        w, h = im.size
+        if w / h > 0.75:
+            nw = round(h * 0.75); im = im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
+        else:
+            nh = round(w / 0.75); im = im.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
+        tp = f'cuts/thumbs/frame_{n.replace(" ", "_")}.jpg'
+        (ROOT / tp).parent.mkdir(parents=True, exist_ok=True)
+        im.resize((240, 320), Image.LANCZOS).save(ROOT / tp, quality=85)
+        item = {'name': n, 'frame': n, 'src': f['thumb'], 'thumb': tp}
+        if f.get('strip') or f.get('double'):
+            item['only1'] = True
+        cuts.append(item)
+        print(f'전체 목록에 추가: {n}')
+        changed = True
+    if changed:
+        write_list(CUT_LIST, cuts)
+
+
 def process_design():
     """디자인/<용도> 폴더의 파일을 크기 맞춰 assets/로 복사하고 assets/ui/manifest.json에 목록을 씀.
     폴더가 비면 만든 파일도 지움(= 앱 기본 모양)."""
@@ -438,6 +472,7 @@ def main():
     else:
         print('새 프레임 없음')
     process_cuts()
+    sync_cut_refs()
     process_design()
 
 
