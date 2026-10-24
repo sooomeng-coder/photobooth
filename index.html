@@ -417,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.31';
+const APP_VERSION = 'v4.32';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -665,7 +665,7 @@ function drawPersonIn(c, bx, deg, stretch, src, align) {
   const rot = (deg || 0) * Math.PI / 180, side = Math.abs(Math.sin(rot)) > 0.5;
   let kx = (side ? bx.h : bx.w) / cw, ky = (side ? bx.w : bx.h) / ch;  // 사람 기준 가로/세로 배율
   if (!stretch) kx = ky = Math.min(kx, ky);
-  const dy = align === 'bottom' && !side ? (bx.h - ch * ky) / 2 : 0;  // 발을 바닥(box 아래)에 붙임
+  const dy = side ? 0 : align === 'bottom' ? (bx.h - ch * ky) / 2 : align === 'top' ? -(bx.h - ch * ky) / 2 : 0;  // bottom: 발을 바닥에 / top: 머리를 box 위에
   c.save();
   c.translate(bx.x + bx.w / 2, bx.y + bx.h / 2 + dy);
   c.rotate(rot);
