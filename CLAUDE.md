@@ -110,7 +110,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
   `slot.json` `{"rotate": -90, "box": [x,y,w,h]}`(선택) → 처리 스크립트가 `frames.json`에 `slot`, `slotRotate`, `slotBox`로 기록.
   코드: `updateMask()`가 `personBox`(사람 범위) 계산, `drawSlot()`이 잘라서 돌리고 box에 맞춰 넣은 뒤 slot으로 자름, `alphaBox()`. 예: `frames/사랑니/`
 - **얼굴 자리 프레임 (v4.9)**: 폴더에 `face.json` `{"x","y","w","h","glow"}`(배경 좌표, 타원 중심·크기)가 있으면 가장 큰 얼굴을 머리째 타원으로 잘라 그 자리에 띄움
-  (`frames.json`의 `faceSpot`). 코드: `drawFaceSpot()`, 머리 범위 `HEAD`(두 눈 가운데 기준 d 배수). 사람 오려내기(seg)는 안 돌림. 예: `frames/해 얼굴/`
+  (`frames.json`의 `faceSpot`). 코드: `drawFaceSpot()`, 머리 범위 `HEAD`(두 눈 가운데 기준 d 배수). 사람 오려내기(seg)는 안 돌림. 예: `frames/해 얼굴/`. v4.30: face.json을 배열로 주면 자리 여러 개, 자리마다 `rotate`(도, 180=뒤집기)·`glow:false`·`alpha`. 예: `frames/임시 3/`(컷 #3)
 - **여러 명 프레임 (v4.10)**: 폴더에 `people.json` `{"fit":"stretch","copies":[{"box":[x,y,w,h],"rotate":0|-90}]}`(fit: stretch = box에 늘려 채움, 없으면 비율 유지)가 있으면 오려낸 사람을 자리마다 그림(`frames.json`의 `copies`).
   코드: `cropPerson()`(사람 범위 잘라 마스크) → `drawPersonIn()`(돌려서 box에 contain, 거울) / `drawCopies()`. 비스듬한 획은 `{"center":[x,y],"len","thick","rotate"}`. 폴더의 `thumb.png` = 썸네일. 예: `frames/퇴근/`, `frames/퇴사/`, `frames/자퇴/`
 - **픽셀 필터 (v4.12)**: `people.json`에 `"pixel":{"cell","colors"}` → `pixelatePerson()`(줄이기 + 바이어 디더링 + 테두리) 결과를 `drawPersonIn(..., src)`로 네모 그대로 키움. 예: `frames/윈앰프/`
@@ -186,6 +186,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 
 ## 프레임 점검 아티팩트 (Claude 점검표)
 - claude.ai 아티팩트 "302호 프레임 점검표" https://claude.ai/artifact/7cgRrbB4RLYyh9GADhJfoN — 사용자가 프레임별로 OK/수정/삭제, 문제 태그(구멍 작음·큼·위치·모양, 배율 조정), 배율 숫자(z), 메모, **구멍 그리기**(타원 shapes, 0~1 정규화 cx,cy,rx,ry, 3:4 기준) 입력
+- **반영할 땐 `s`가 fix/del이고 `done`이 아닌 것만** (사용자가 메모를 여러 번 고쳐서 예전 메모가 남아 있을 수 있음 — 태그·메모가 지난 반영과 같으면 확인)
 - 데이터: ArtifactData collection `review`, doc id = `k`+md5(cuts.json src)[:12], 필드 {no,name,src,s,m,z,issues,shapes,done}. 반영하면 `done: true`로 update
 - 썸네일 = 분홍(#FF2BD6)이 카메라 보이는 자리. 원본 `scratchpad/reviewart/`(세션 바뀌면 다시 만들어야 함): t/NNN.jpg 360×480 + frames.json(no,name,src,key,kind,area,holes,edge,z)
 - 목록이 바뀌면(삭제·추가) 썸네일·frames.json 다시 만들어 같은 URL로 재게시

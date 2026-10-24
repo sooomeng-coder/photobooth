@@ -417,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.29';
+const APP_VERSION = 'v4.30';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -595,7 +595,7 @@ function compose(ctx, W, H) {
   if (cur.bg) {
     // 배경 → 사람만 오려서 위에 (마스크가 아직 없으면 배경만)
     ctx.drawImage(cur.bg, 0, 0, W, H);
-    if (cur.faceSpot) { drawFaceSpot(ctx, W, H, sw, sh); }
+    if (cur.faceSpot) { for (const sp of [].concat(cur.faceSpot)) drawFaceSpot(ctx, W, H, sw, sh, sp); }
     else if (cur.slot) { if (sw && sh && maskReady) drawSlot(ctx, W, H, sw, sh); }
     else if (cur.copies) { if (sw && sh && maskReady) drawCopies(ctx, W, H, sw, sh); }
     else if (cur.bubbles) { drawBubbles(ctx, W, H, sw, sh); }
@@ -926,8 +926,9 @@ function drawSlot(ctx, W, H, sw, sh) {
 // faceSpot = { x, y: 타원 중심, w, h: 타원 크기 (배경 좌표), glow: 뒤에 빛 번짐 }
 const faceCanvas = document.createElement('canvas'), fctx = faceCanvas.getContext('2d');
 const HEAD = { down: 0.1, rx: 1.45, ry: 1.95 };  // 두 눈 가운데 기준 머리 타원 (d = 두 눈 사이 거리 배수)
-function drawFaceSpot(ctx, W, H, sw, sh) {
-  const sp = cur.faceSpot, s = W / cur.W;
+// v4.30: faceSpot을 배열로 주면 자리마다 그림. rotate(도) = 얼굴을 돌려서 넣음(180 = 뒤집기), alpha = 얼굴 투명도
+function drawFaceSpot(ctx, W, H, sw, sh, sp) {
+  const s = W / cur.W;
   const cx = sp.x * s, cy = sp.y * s, tw = Math.round(sp.w * s), th = Math.round(sp.h * s);
   if (sp.glow !== false) {  // 해처럼 빛 번짐
     ctx.save();
@@ -980,9 +981,11 @@ function drawFaceSpot(ctx, W, H, sw, sh) {
   g2.addColorStop(0.72, 'rgba(0,0,0,1)'); g2.addColorStop(1, 'rgba(0,0,0,0)');
   fctx.fillStyle = g2; fctx.beginPath(); fctx.arc(0, 0, tw / 2, 0, Math.PI * 2); fctx.fill();
   fctx.restore();
-  ctx.globalAlpha = 0.8;  // 얼굴은 살짝 비치게 (뒤 햇빛이 보임)
-  ctx.drawImage(faceCanvas, cx - tw / 2, cy - th / 2);
-  ctx.globalAlpha = 1;
+  ctx.save();
+  ctx.globalAlpha = sp.alpha != null ? sp.alpha : (sp.glow !== false ? 0.8 : 1);  // 해 얼굴은 살짝 비치게
+  ctx.translate(cx, cy); if (sp.rotate) ctx.rotate(sp.rotate * Math.PI / 180);
+  ctx.drawImage(faceCanvas, -tw / 2, -th / 2);
+  ctx.restore();
 }
 
 function fitLiveCanvas() {
