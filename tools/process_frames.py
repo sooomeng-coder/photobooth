@@ -194,11 +194,9 @@ def sync_cut_refs():
         im = Image.open(ROOT / f['thumb']).convert('RGB')
         if im.width > im.height:
             im = im.rotate(-90, expand=True)
-        w, h = im.size
-        if w / h > 0.75:
-            nw = round(h * 0.75); im = im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
-        else:
-            nh = round(w / 0.75); im = im.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
+        w, h = im.size  # 앱처럼 자르지 않고 흰 여백으로 3:4 (v4.23)
+        W, H = (w, round(w / 0.75)) if w / h > 0.75 else (round(h * 0.75), h)
+        bg = Image.new('RGB', (W, H), 'white'); bg.paste(im, ((W - w) // 2, (H - h) // 2)); im = bg
         tp = f'cuts/thumbs/frame_{n.replace(" ", "_")}.jpg'
         (ROOT / tp).parent.mkdir(parents=True, exist_ok=True)
         im.resize((240, 320), Image.LANCZOS).save(ROOT / tp, quality=85)

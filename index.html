@@ -392,7 +392,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.22';
+const APP_VERSION = 'v4.23';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1504,6 +1504,16 @@ function renderCutBar() {
   }
 }
 
+// v4.23: 모든 사진을 같은 비율(3:4)로 — 비율이 다르면 자르지 않고 흰 여백을 붙임
+function padTo(src, ar) {
+  if (Math.abs(src.width / src.height - ar) < 0.005) return src;
+  let W = src.width, H = src.height;
+  if (W / H > ar) H = Math.round(W / ar); else W = Math.round(H * ar);
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+  x.drawImage(src, Math.round((W - src.width) / 2), Math.round((H - src.height) / 2));
+  return c;
+}
 function coverCrop(src, ar) {  // 가운데를 ar(가로/세로) 비율로 잘라 냄
   let w = src.width, h = src.height;
   if (w / h > ar) w = Math.round(h * ar); else h = Math.round(w / ar);
@@ -1515,7 +1525,7 @@ async function onCutShot(out) {
   if (cur.rotate) out = rotateCanvas(out, -cur.rotate);  // 인화 방향으로 되돌림
   if (!session.strip && CUTS[session.picks[session.idx]].frame) {  // 1컷 프레임: 가로면 세우고 3:4로
     if (out.width > out.height) out = rotateCanvas(out, 90);
-    out = coverCrop(out, 3 / 4);
+    out = padTo(out, 3 / 4);  // v4.23: 자르지 않고 흰 여백으로 3:4
   }
   const t = document.createElement('canvas'); t.width = 150; t.height = Math.round(150 * out.height / out.width);
   t.getContext('2d').drawImage(out, 0, 0, t.width, t.height);
@@ -1751,7 +1761,7 @@ async function shoot() {
   }
   if (session) { busy = false; return onCutShot(session.strip ? stripShot() : out); }
 
-  const print = fitPrint(out);  // 10x15cm(4x6인치, 2:3) 인화지에 맞춤
+  const print = fitPrint(padTo(out, out.width > out.height ? 4 / 3 : 3 / 4));  // 3:4로 맞춘 뒤  // 10x15cm(4x6인치, 2:3) 인화지에 맞춤
   screens.result.querySelector('.stage').style.setProperty('--ar', print.width / print.height);
   resultBlob = await new Promise(r => print.toBlob(r, 'image/png'));
   const img = $('resultImg');

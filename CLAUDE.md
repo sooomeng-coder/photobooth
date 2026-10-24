@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.22) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.23) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -162,6 +162,10 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - 키 = 프레임 src. 기본값 `cam-adjust.json`(루트, `{src:{z,x,y}}`) + 기기 localStorage(`photobooth.camAdjust`)가 덮어씀
 - 사용자가 "전체 설정 복사" 결과를 보내오면 `cam-adjust.json`에 넣고 push
 - 적용: `compose()`의 일반 경로(배경 없는 프레임·컷), 이중노출. 배경/사람 오려내기 프레임·띠 4컷엔 미적용
+
+## 비율 통일 (v4.23)
+- **모든 결과 사진은 3:4**(가로 프레임은 4:3). 비율이 다른 프레임은 자르지 않고 흰 여백(`padTo()`). 9컷 칸, 1컷 인화(그 뒤 `fitPrint()`로 2:3 인화지에) 모두
+- 새 프레임은 768×1024(3:4)로 만들면 여백 없음
 
 ## 전체 목록 하나 (v4.22)
 - **`cuts/cuts.json`이 전체 프레임 목록이자 번호표** (1컷·9컷 공통). 항목: 컷 파일 `{name,src,thumb,shootRotate?}` / 1컷 프레임 참조 `{name,frame,src,thumb,only1?}`
