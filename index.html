@@ -94,7 +94,7 @@
   #countdown { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
     font-size: min(40vmin, 360px); font-weight: 900; color: #fff; pointer-events: none;
     text-shadow: 0 0 30px rgba(0,0,0,.6), 0 6px 0 rgba(0,0,0,.35); }
-  #countdown.tick { animation: tick 1s ease-out; }
+  #countdown.tick { animation: tick var(--step, 1s) ease-out; }
   @keyframes tick { 0% { transform: scale(1.5); opacity: 0; } 20% { transform: scale(1); opacity: 1; } 85% { opacity: 1; } 100% { opacity: 0; } }
   #flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 50; }
   #flash.go { animation: flash .5s ease-out; }
@@ -242,7 +242,7 @@
 
   /* 시트 결과: 버튼은 시트 아래, 컷을 눌러 다시 찍기 */
   #resultScreen.sheetMode { flex-direction: column; justify-content: flex-start; padding-top: 16px; }
-  #resultScreen.sheetMode .home { top: calc(100% + 18px); left: 0; }
+  #resultScreen.sheetMode .home { position: fixed; top: 16px; left: 16px; }  /* v4.29: SAVE 버튼과 겹쳐서 잘못 눌리던 것 */
   #resultScreen.sheetMode .stage { --avail-h: calc(100vh - 150px - env(safe-area-inset-bottom, 0px)); }
   #resultScreen.sheetMode .btnRow { top: calc(100% + 14px); bottom: auto; align-items: center; }
   #resultScreen.sheetMode #retakeBtn { display: none; }
@@ -417,14 +417,15 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.28';
+const APP_VERSION = 'v4.29';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
   START_SUB: '찾아와주셔서 감사합니다. 이용 시간은 5분입니다.',
   START_MODES: ['9'],    // 시작 화면에 보여줄 모드 ('single' 1컷, '4' 4컷도 가능). 하나면 처음부터 골라져 있음
   COUNTDOWN: 8,          // 카운트다운 초 (1장, 그리고 4컷/9컷의 첫 컷)
-  CUT_COUNTDOWN: 8,      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초 (셔터 안 눌러도 자동 시작)
+  CUT_COUNTDOWN: 8,
+  COUNT_STEP: 1.5,       // 숫자 하나가 떠 있는 시간(초). 8 × 1.5 = 약 12초      // 4컷/9컷에서 두 번째 컷부터의 카운트다운 초 (셔터 안 눌러도 자동 시작)
   MAX_RETAKE: 2,         // 다시 찍기 허용 횟수 (9컷: 여러 컷을 골라 한 번에 = 1회)
   // 사진 업로드 (v4.26): 구글 앱스크립트 웹앱 주소 (tools/drive-upload.gs). ⚙ 패널 "업로드 주소"로 기기에서 바꿀 수도 있음
   UPLOAD_URL: 'https://script.google.com/macros/s/AKfycbwUqw4091WJLBYtyVs66HWW7SYoLvGfXrQ7eUuYfhEtkrVYGbK3EXE1IQV3h0QONtu91w/exec',
@@ -1814,8 +1815,9 @@ async function shoot() {
   for (let n = count; n >= 1; n--) {
     if (!screens.shoot.classList.contains('active')) { busy = false; return; }
     if (UI['count' + n]) cd.innerHTML = `<img alt="${n}" src="${UI['count' + n]}">`; else cd.textContent = n;
+    cd.style.setProperty('--step', CONFIG.COUNT_STEP + 's');
     cd.classList.remove('tick'); void cd.offsetWidth; cd.classList.add('tick');
-    await wait(1000);
+    await wait(CONFIG.COUNT_STEP * 1000);
   }
   cd.textContent = '';
   if (!screens.shoot.classList.contains('active')) { busy = false; return; }
@@ -1866,7 +1868,7 @@ function save() {
   title.textContent = '드라이브로 보내는 중…'; msg.textContent = '잠깐만 기다려 주세요';
   ok.disabled = true; $('doneBox').classList.add('wait');
   queueUpload(name.replace(/\.png$/, '.jpg'), resultBlob)
-    .then(done => done ? finish('드라이브 이동 완료!', '확인을 누르면 처음 화면으로 가요')
+    .then(done => done ? finish('전송되었어요!', '확인을 누르면 처음 화면으로 가요')
                        : finish('아직 못 보냈어요', '사진은 아이패드에 있어요. 인터넷이 되면 자동으로 드라이브에 올라가요'))
     .catch(() => finish('아직 못 보냈어요', '사진은 아이패드에 있어요. 인터넷이 되면 자동으로 드라이브에 올라가요'));
 }
