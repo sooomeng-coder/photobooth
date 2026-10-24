@@ -417,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.35';
+const APP_VERSION = 'v4.36';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -589,6 +589,7 @@ function setupAdjPanel() {
 // 사람만 오려낸 카메라 영상을 그릴 임시 캔버스
 const personCanvas = document.createElement('canvas'), pctx = personCanvas.getContext('2d');
 
+let composeFinal = false;
 const splitCanvas = document.createElement('canvas'), spctx = splitCanvas.getContext('2d');
 function compose(ctx, W, H) {
   const sw = video.videoWidth, sh = video.videoHeight;
@@ -628,6 +629,7 @@ function compose(ctx, W, H) {
     spctx.globalCompositeOperation = 'destination-in'; spctx.drawImage(cur.split, 0, 0, W, H);
     ctx.drawImage(splitCanvas, 0, 0);
   }
+  if (cur.stageOverlays) cur.overlay = composeFinal || !cur.split ? cur.fullOverlay : cur.stageOverlays[cur.ghost ? 1 : 0];
   if (cur.variants) {  // 0.35초마다 다른 그림으로 (찍는 순간 보이는 것이 저장됨)
     const now = performance.now();
     if (!cur.vt || now - cur.vt > 350) {
@@ -675,12 +677,15 @@ function cropPerson(sw, sh) {
 
 // 잘라 둔 사람을 돌려서 box(화면 좌표) 안에 그림. 거울(좌우반전)
 // stretch = box에 딱 맞게 가로세로 따로 늘림 (글자 획처럼 꽉 채울 때), 아니면 비율 유지
-function drawPersonIn(c, bx, deg, stretch, src, align) {
+function drawPersonIn(c, bx, deg, stretch, src, align, fit) {
   src = src || cropCanvas;
   const cw = src.width, ch = src.height;
   const rot = (deg || 0) * Math.PI / 180, side = Math.abs(Math.sin(rot)) > 0.5;
   let kx = (side ? bx.h : bx.w) / cw, ky = (side ? bx.w : bx.h) / ch;  // 사람 기준 가로/세로 배율
-  if (!stretch) kx = ky = Math.min(kx, ky);
+  if (!stretch) {  // v4.36 cover: 상체만 보여도 box 높이를 채우게 크게 (가로는 box의 1.6배까지)
+    const lo = Math.min(kx, ky);
+    kx = ky = fit === 'cover' ? Math.max(lo, Math.min(Math.max(kx, ky), kx * 1.6)) : lo;
+  }
   const dy = side ? 0 : align === 'bottom' ? (bx.h - ch * ky) / 2 : align === 'top' ? -(bx.h - ch * ky) / 2 : 0;  // bottom: 발을 바닥에 / top: 머리를 box 위에
   c.save();
   c.translate(bx.x + bx.w / 2, bx.y + bx.h / 2 + dy);
@@ -797,7 +802,7 @@ function drawCopies(ctx, W, H, sw, sh) {
     const [x, y, w, h] = p.box;
     let use = src;
     if (p.top && !src) use = topPart(p.top);  // 머리~어깨만 (아래는 부드럽게 사라짐)
-    const r = drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch, use, p.align);
+    const r = drawPersonIn(ctx, { x: x * s, y: y * s, w: w * s, h: h * s }, p.rotate, stretch, use, p.align, p.fit);
     if (p.fire) drawFire(ctx, r);
   }
 }
@@ -1555,6 +1560,10 @@ async function enterCut(k) {
   show('shoot');
   const cc = session.strip ? null : CUTS[session.picks[k]];
   cur.split = cc && cc.split ? await loadImg(cc.split).catch(() => null) : null;
+  if (cur.split && cc.stages && !cur.stageOverlays) {  // v4.36: 1번째·2번째 촬영 때 보여 줄 프레임 (구멍 하나씩)
+    cur.fullOverlay = cur.overlay;
+    cur.stageOverlays = await Promise.all(cc.stages.map(u => loadImg(u).then(buildOverlay))).catch(() => null);
+  }
   if (cur.double || cur.split) { cur.ghost = null; showDblHint(); }  // v4.33: 이중노출 (1)(2) / v4.34: 나눠 찍기(위 → 아래)
 }
 
@@ -1863,7 +1872,9 @@ async function shoot() {
   // 원본 프레임 해상도로 합성
   const out = document.createElement('canvas');
   out.width = cur.W; out.height = cur.H;
+  composeFinal = true;  // 나눠 찍기 마지막: 원래 프레임으로 합침
   compose(out.getContext('2d'), out.width, out.height);
+  composeFinal = false;
 
   const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
   if (cur.double || cur.split) {
