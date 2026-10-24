@@ -1,5 +1,5 @@
 [
-  {"name": "임시 1", "src": "cuts/cut1.png", "thumb": "cuts/thumbs/cut1.jpg", "shootRotate": -90},
+  {"name": "임시 1", "src": "cuts/cut1.png", "thumb": "cuts/thumbs/cut1.jpg"},
   {"name": "임시 2", "src": "cuts/cut2.png", "thumb": "cuts/thumbs/cut2.jpg"},
   {"name": "임시 3", "src": "cuts/cut3.png", "thumb": "cuts/thumbs/cut3.jpg"},
   {"name": "임시 6", "src": "cuts/cut6.png", "thumb": "cuts/thumbs/cut6.jpg"},
