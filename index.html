@@ -1175,7 +1175,7 @@ async function startCamera() {
     msg.classList.add('hidden');
     renderVersion();
   } catch (e) {
-    msg.innerHTML = '카메라를 열 수 없어요.<br>브라우저에서 카메라 권한을 허용해 주세요.<br><small>(https 주소 또는 localhost에서 열어야 카메라가 동작해요)</small>';
+    msg.innerHTML = '카메라를 열 수 없어요.<br>브라우저에서 카메라 권한을 허용해 주세요.<br><small>(https 주소 또는 localhost에서 열어야 카메라가 동작해요)<br>오류: ' + (e && e.name || e) + '</small>';
     msg.classList.remove('hidden');
   }
 }
