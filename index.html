@@ -75,6 +75,14 @@
     background: rgba(20,20,20,.88); color: #fff; border-radius: 14px; padding: 12px 14px; font: 15px/1.4 -apple-system, sans-serif;
     display: flex; flex-direction: column; gap: 10px; }
   #adjPanel.hidden { display: none; }
+  /* 점검 모드 (v4.21): index.html#test-c-12 / #test-f-3 */
+  #testBar { position: absolute; left: 50%; bottom: 2.5%; transform: translateX(-50%); z-index: 7; display: flex; gap: 8px; align-items: center;
+    background: rgba(20,20,20,.85); color: #fff; border-radius: 999px; padding: 6px 8px; font: 700 16px -apple-system, sans-serif; }
+  #testBar.hidden { display: none; }
+  #testBar button, #testBar a { min-width: 48px; height: 44px; border-radius: 999px; border: 0; background: #fff; color: #111; font-size: 18px;
+    display: inline-flex; align-items: center; justify-content: center; text-decoration: none; padding: 0 14px; }
+  #testLabel { padding: 0 6px; max-width: 40vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.testMode #shutterBtn { right: 3%; left: auto; transform: none; }
   #adjLabel { font-weight: 700; }
   #adjPanel label { display: flex; flex-direction: column; gap: 4px; }
   #adjPanel input[type=range] { width: 100%; }
@@ -332,6 +340,12 @@
     <div id="dblHint" class="hidden"></div>
     <button id="shutterBtn" class="shutter" aria-label="촬영"></button>
     <button class="home" data-back aria-label="프레임 다시 고르기">←</button>
+    <div id="testBar" class="hidden">
+      <button id="testPrev" aria-label="이전 프레임">◀</button>
+      <span id="testLabel"></span>
+      <button id="testNext" aria-label="다음 프레임">▶</button>
+      <a id="testList" href="review.html">목록</a>
+    </div>
     <button id="adjBtn" aria-label="카메라 배율 조정 (길게 누르기)">⚙</button>
     <div id="adjPanel" class="hidden">
       <div id="adjLabel"></div>
@@ -377,7 +391,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.20';
+const APP_VERSION = 'v4.21';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1798,6 +1812,31 @@ function setupOffline() {
 }
 
 /* ================= 초기화 ================= */
+/* ================= 점검 모드 (v4.21) =================
+   review.html에서 "테스트"를 누르면 index.html#test-c-<컷 번호> / #test-f-<1컷 번호>로 열림
+   → 그 프레임 촬영 화면 + 배율 패널 열림, 아래 ◀ ▶로 다음 프레임, "목록"으로 점검표로 */
+async function openTest() {
+  const m = location.hash.match(/^#test-([cf])-(\d+)$/);
+  if (!m) return false;
+  const kind = m[1], max = kind === 'c' ? CUTS.length : FRAMES.length;
+  const n = Math.min(Math.max(1, +m[2]), max);
+  document.body.classList.add('testMode');
+  const f = kind === 'c' ? CUTS[n - 1] : FRAMES[n - 1];
+  $('testLabel').textContent = `${kind === 'c' ? '9컷' : '1컷'} #${n} ${f.name || ''}`;
+  $('testList').href = `review.html#${kind}-${n}`;
+  $('testPrev').onclick = () => { location.hash = `test-${kind}-${n > 1 ? n - 1 : max}`; };
+  $('testNext').onclick = () => { location.hash = `test-${kind}-${n < max ? n + 1 : 1}`; };
+  busy = false;
+  if (kind === 'c') {
+    session = { mode: '9', n: 1, picks: [n - 1], shots: [], idx: 0, retakeLeft: CONFIG.MAX_RETAKE, retakeIdx: null };
+    await startCutSession();
+  } else if (f.strip) { await startStripSession(n - 1); }
+  else { session = null; await selectFrame(n - 1); }
+  $('testBar').classList.remove('hidden');
+  $('adjPanel').classList.remove('hidden'); syncAdjUI();
+  return true;
+}
+
 (async function init() {
   UI = await loadUI();
   $('startTitle').textContent = CONFIG.START_TITLE;
@@ -1836,6 +1875,8 @@ function setupOffline() {
   $('retakeBtn').addEventListener('click', retake);
   document.querySelectorAll('[data-home]').forEach(b => b.addEventListener('click', goHome));
   document.querySelectorAll('[data-back]').forEach(b => b.addEventListener('click', goBackToFrames));
+  window.addEventListener('hashchange', openTest);
+  openTest();
   window.addEventListener('keydown', e => {
     if (e.code === 'Space' || e.code === 'Enter') {
       if (screens.start.classList.contains('active')) goStart();

@@ -15,6 +15,12 @@ git checkout <버전의 커밋> -- index.html tools .github
 git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 ```
 
+## v4.21 — 프레임 점검표(review.html) + 점검 모드
+- `review.html`: 9컷·1컷 프레임 전부를 썸네일로. 프레임마다 OK/수정/삭제 + 메모(이 기기 localStorage `photobooth.review`), 배율 조정 여부 표시, 필터(미확인·배율 아직 등)
+- "결과 복사" → 삭제·수정 목록 + 배율 JSON을 한 번에 복사해서 Claude에게 보냄
+- "카메라로 테스트" → `index.html#test-c-N`(9컷) / `#test-f-N`(1컷): 그 프레임 촬영 화면 + 배율 패널 열림, 아래 ◀ ▶로 다음 프레임, "목록"으로 점검표
+- 코드: `openTest()`, `#testBar`
+
 ## v4.20 — 1컷 프레임도 9컷에서 고르기
 - `cuts.json` 항목 `{"name","frame":"<frames.json 이름>","src","thumb"}` → 촬영은 1컷과 똑같이(LIVE 사람 오려내기 포함)
 - 찍은 사진이 가로면 세우고(시계방향 90°) 3:4 가운데로 잘라 칸에 넣음. 썸네일 `cuts/thumbs/frame_<이름>.jpg`도 같은 모양

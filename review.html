@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>프레임 점검표 · 302호</title>
+<style>
+  :root { --bg: #f4f1ea; --ink: #141414; --sub: #6b6760; --card: #fff; --ok: #1f8a4c; --fix: #c77700; --del: #d23a1e; --line: #e2ddd2; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.4 -apple-system, "Apple SD Gothic Neo", sans-serif; }
+  header { position: sticky; top: 0; z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: 12px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+  h1 { margin: 0; font-size: 20px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .stat { font-variant-numeric: tabular-nums; color: var(--sub); }
+  .stat b { color: var(--ink); }
+  .chip { border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 14px; min-height: 40px; }
+  .chip.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .btn { border: 0; border-radius: 10px; padding: 10px 16px; min-height: 44px; font-weight: 700; font-size: 15px; background: var(--ink); color: #fff; }
+  .btn.ghost { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  #msg { color: var(--ok); font-size: 13px; min-height: 1em; }
+  main { padding: 16px; display: flex; flex-direction: column; gap: 28px; }
+  h2 { margin: 0 0 10px; font-size: 18px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .card { background: var(--card); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 6px; border: 3px solid transparent; scroll-margin-top: 140px; }
+  .card.s-ok { border-color: var(--ok); } .card.s-fix { border-color: var(--fix); } .card.s-del { border-color: var(--del); opacity: .55; }
+  .card.hit { box-shadow: 0 0 0 4px #2f6bff; }
+  .thumb { width: 100%; aspect-ratio: 3 / 4; object-fit: contain; background: #eee; border-radius: 6px; display: block; }
+  .thumb.wide { aspect-ratio: 4 / 3; }
+  .title { display: flex; gap: 6px; align-items: baseline; min-width: 0; }
+  .no { font-weight: 800; text-decoration: underline; text-underline-offset: 3px; flex: none; font-variant-numeric: tabular-nums; }
+  .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--sub); font-size: 13px; }
+  .tags { display: flex; gap: 4px; flex-wrap: wrap; font-size: 11px; }
+  .tag { border-radius: 4px; padding: 1px 6px; background: #eee; }
+  .tag.z { background: #dfeaff; color: #1d4ed8; } .tag.live { background: #ffe9d6; color: #9a4a00; }
+  .acts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .acts button { border: 1px solid var(--line); background: #fff; border-radius: 8px; min-height: 36px; font-size: 13px; font-weight: 700; }
+  .acts button.on[data-s="ok"] { background: var(--ok); color: #fff; border-color: var(--ok); }
+  .acts button.on[data-s="fix"] { background: var(--fix); color: #fff; border-color: var(--fix); }
+  .acts button.on[data-s="del"] { background: var(--del); color: #fff; border-color: var(--del); }
+  .memo { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; font-size: 13px; min-height: 36px; }
+  .test { display: flex; align-items: center; justify-content: center; min-height: 36px; border-radius: 8px; background: var(--ink); color: #fff; text-decoration: none; font-weight: 700; font-size: 13px; }
+  .hidden { display: none !important; }
+  textarea#out { width: 100%; min-height: 120px; font: 12px ui-monospace, monospace; }
+</style>
+</head>
+<body>
+<header>
+  <div class="row" style="justify-content: space-between">
+    <h1>프레임 점검표</h1>
+    <a class="btn ghost" href="index.html" style="text-decoration:none;display:inline-flex;align-items:center">포토부스로</a>
+  </div>
+  <div class="row stat" id="stats"></div>
+  <div class="row" id="filters"></div>
+  <div class="row">
+    <button class="btn" id="copyBtn">결과 복사 (Claude에게 보내기)</button>
+    <button class="btn ghost" id="resetBtn">점검 표시 전부 지우기</button>
+    <span id="msg"></span>
+  </div>
+  <textarea id="out" class="hidden" readonly></textarea>
+</header>
+<main>
+  <section><h2>9컷 프레임</h2><div class="grid" id="gridC"></div></section>
+  <section><h2>1컷 프레임</h2><div class="grid" id="gridF"></div></section>
+</main>
+<script>
+const LS_REVIEW = 'photobooth.review', LS_ADJ = 'photobooth.camAdjust';
+const load = (k) => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; } };
+let REV = load(LS_REVIEW);
+const ADJ_LOCAL = load(LS_ADJ);
+let ADJ_BASE = {}, CUTS = [], FRAMES = [], filter = 'all';
+const save = () => { try { localStorage.setItem(LS_REVIEW, JSON.stringify(REV)); } catch (e) {} };
+const $ = (id) => document.getElementById(id);
+
+// 배율 조정이 먹는 프레임인지 (사람 오려내기·띠 4컷은 거리로 맞춤)
+function zoomable(f) { return !f.live && !f.strip; }
+function adjOf(key) { return key ? (ADJ_LOCAL[key] || ADJ_BASE[key] || null) : null; }
+
+function items() {
+  const out = [];
+  CUTS.forEach((c, i) => {
+    const ref = c.frame ? FRAMES.find(x => x.name === c.frame) : null;
+    out.push({ id: `c-${i + 1}`, kind: 'c', no: i + 1, name: c.name || '', thumb: c.thumb || c.src,
+      zoom: ref ? zoomable(ref) : true, live: ref ? !!ref.live : false, adj: adjOf(c.src), from1: !!ref });
+  });
+  FRAMES.forEach((f, i) => {
+    out.push({ id: `f-${i + 1}`, kind: 'f', no: i + 1, name: f.name || '', thumb: f.thumb || f.src,
+      zoom: zoomable(f), live: !!f.live, strip: !!f.strip, adj: adjOf(f.src) });
+  });
+  return out;
+}
+
+function pass(it) {
+  const s = (REV[it.id] || {}).s;
+  if (filter === 'all') return true;
+  if (filter === 'todo') return !s;
+  if (filter === 'nozoom') return it.zoom && !it.adj && s !== 'del';
+  return s === filter;
+}
+
+function render() {
+  const all = items();
+  const cnt = { ok: 0, fix: 0, del: 0, todo: 0 };
+  all.forEach(it => { const s = (REV[it.id] || {}).s; cnt[s || 'todo']++; });
+  const zoomed = all.filter(it => it.adj).length;
+  $('stats').innerHTML = `전체 <b>${all.length}</b> · 미확인 <b>${cnt.todo}</b> · OK <b>${cnt.ok}</b> · 수정 <b>${cnt.fix}</b> · 삭제 <b>${cnt.del}</b> · 배율 조정함 <b>${zoomed}</b>`;
+  const F = [['all', '전체'], ['todo', '미확인'], ['ok', 'OK'], ['fix', '수정'], ['del', '삭제'], ['nozoom', '배율 아직']];
+  $('filters').innerHTML = F.map(([k, t]) => `<button class="chip${filter === k ? ' on' : ''}" data-f="${k}">${t}</button>`).join('');
+  for (const [kind, grid] of [['c', $('gridC')], ['f', $('gridF')]]) {
+    grid.textContent = '';
+    for (const it of all.filter(x => x.kind === kind && pass(x))) grid.appendChild(card(it));
+  }
+}
+
+function card(it) {
+  const r = REV[it.id] || {};
+  const d = document.createElement('div');
+  d.className = 'card' + (r.s ? ' s-' + r.s : ''); d.id = it.id;
+  const img = document.createElement('img');
+  img.className = 'thumb' + (it.kind === 'f' ? ' wide' : ''); img.loading = 'lazy'; img.alt = ''; img.src = it.thumb;
+  d.appendChild(img);
+  const t = document.createElement('div'); t.className = 'title';
+  t.innerHTML = `<span class="no">#${it.no}</span>`;
+  const nm = document.createElement('span'); nm.className = 'name'; nm.textContent = it.name; t.appendChild(nm);
+  d.appendChild(t);
+  const tags = document.createElement('div'); tags.className = 'tags';
+  if (it.live) tags.insertAdjacentHTML('beforeend', '<span class="tag live">사람 오려내기 · 거리로 맞춤</span>');
+  else if (it.strip) tags.insertAdjacentHTML('beforeend', '<span class="tag live">띠 4컷</span>');
+  else if (it.adj) tags.insertAdjacentHTML('beforeend', `<span class="tag z">배율 ${(+it.adj.z).toFixed(2)}${it.adj.x || it.adj.y ? ' · 이동' : ''}</span>`);
+  else tags.insertAdjacentHTML('beforeend', '<span class="tag">배율 기본</span>');
+  if (it.from1) tags.insertAdjacentHTML('beforeend', '<span class="tag">1컷에서 옴</span>');
+  d.appendChild(tags);
+  const acts = document.createElement('div'); acts.className = 'acts';
+  for (const [s, label] of [['ok', 'OK'], ['fix', '수정'], ['del', '삭제']]) {
+    const b = document.createElement('button'); b.dataset.s = s; b.textContent = label;
+    if (r.s === s) b.classList.add('on');
+    b.addEventListener('click', () => {
+      const cur = REV[it.id] || {};
+      cur.s = cur.s === s ? undefined : s;
+      if (!cur.s && !cur.m) delete REV[it.id]; else REV[it.id] = cur;
+      save(); render();
+      const el = $(it.id); if (el && s === 'fix' && cur.s) el.querySelector('.memo').focus();
+    });
+    acts.appendChild(b);
+  }
+  d.appendChild(acts);
+  const memo = document.createElement('input'); memo.className = 'memo'; memo.placeholder = '메모 (뭘 고칠지)'; memo.value = r.m || '';
+  if (r.s !== 'fix' && !r.m) memo.classList.add('hidden');
+  memo.addEventListener('change', () => { const cur = REV[it.id] || {}; cur.m = memo.value.trim() || undefined; if (!cur.s && !cur.m) delete REV[it.id]; else REV[it.id] = cur; save(); });
+  d.appendChild(memo);
+  const a = document.createElement('a'); a.className = 'test'; a.href = `index.html#test-${it.kind}-${it.no}`;
+  a.textContent = it.zoom ? '카메라로 테스트 · 배율' : '카메라로 테스트';
+  d.appendChild(a);
+  return d;
+}
+
+function report() {
+  const all = items(), lines = [];
+  const label = it => `${it.kind === 'c' ? '9컷' : '1컷'} #${it.no} ${it.name}`;
+  const pick = s => all.filter(it => (REV[it.id] || {}).s === s);
+  const del = pick('del'), fix = pick('fix');
+  lines.push(`[삭제 ${del.length}개]`); del.forEach(it => lines.push('- ' + label(it)));
+  lines.push(`[수정 ${fix.length}개]`); fix.forEach(it => lines.push('- ' + label(it) + ((REV[it.id] || {}).m ? ' — ' + REV[it.id].m : '')));
+  const memoOnly = all.filter(it => { const r = REV[it.id] || {}; return r.m && r.s !== 'fix'; });
+  if (memoOnly.length) { lines.push('[메모]'); memoOnly.forEach(it => lines.push('- ' + label(it) + ' — ' + REV[it.id].m)); }
+  lines.push('[배율]'); lines.push(JSON.stringify({ ...ADJ_BASE, ...ADJ_LOCAL }));
+  return lines.join('\n');
+}
+
+$('filters').addEventListener('click', e => { const b = e.target.closest('[data-f]'); if (!b) return; filter = b.dataset.f; render(); });
+$('copyBtn').addEventListener('click', async () => {
+  const txt = report(), out = $('out');
+  out.value = txt; out.classList.remove('hidden');
+  try { await navigator.clipboard.writeText(txt); $('msg').textContent = '복사했어요. 대화창에 붙여 넣어 주세요'; }
+  catch (e) { out.select(); $('msg').textContent = '아래 글을 길게 눌러 복사해 주세요'; }
+});
+let resetArmed = false;
+$('resetBtn').addEventListener('click', () => {
+  if (!resetArmed) { resetArmed = true; $('resetBtn').textContent = '정말 지울까요? 한 번 더 누르기'; setTimeout(() => { resetArmed = false; $('resetBtn').textContent = '점검 표시 전부 지우기'; }, 4000); return; }
+  REV = {}; save(); resetArmed = false; $('resetBtn').textContent = '점검 표시 전부 지우기'; render();
+});
+
+(async () => {
+  const get = async (u) => { try { const r = await fetch(u, { cache: 'no-cache' }); return r.ok ? await r.json() : null; } catch (e) { return null; } };
+  const [c, f, a] = await Promise.all([get('cuts/cuts.json'), get('frames/frames.json'), get('cam-adjust.json')]);
+  CUTS = (c || []).filter(x => x && x.src); FRAMES = f || []; ADJ_BASE = a || {};
+  render();
+  const h = location.hash.slice(1);
+  if (h) { const el = $(h); if (el) { el.scrollIntoView({ block: 'center' }); el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 2500); } }
+})();
+</script>
+</body>
+</html>

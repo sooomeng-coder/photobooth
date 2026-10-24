@@ -6,7 +6,7 @@
 - 저장소: `sooomeng-coder/photobooth` (main 브랜치 루트의 `index.html`이 서비스됨)
 - 사용 기기: 아이패드 사파리 (홈 화면에 추가해서 전체화면으로 사용)
 
-## 현재 상태 (v4.20) — 버전 기록·되돌리기는 `CHANGELOG.md`
+## 현재 상태 (v4.21) — 버전 기록·되돌리기는 `CHANGELOG.md`
 
 이미지는 base64가 아니라 별도 파일로 분리되어 있고, `index.html`이 상대경로로 불러옴.
 
@@ -162,6 +162,10 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - 키 = 프레임 src. 기본값 `cam-adjust.json`(루트, `{src:{z,x,y}}`) + 기기 localStorage(`photobooth.camAdjust`)가 덮어씀
 - 사용자가 "전체 설정 복사" 결과를 보내오면 `cam-adjust.json`에 넣고 push
 - 적용: `compose()`의 일반 경로(배경 없는 프레임·컷), 이중노출. 배경/사람 오려내기 프레임·띠 4컷엔 미적용
+
+## 프레임 점검 (v4.21)
+- `review.html` = 점검표 (OK/수정/삭제 + 메모, localStorage `photobooth.review`). "결과 복사" 텍스트를 사용자가 보내오면: 삭제는 cuts.json/frames.json에서 빼기(파일도), 수정은 메모대로, [배율] JSON은 `cam-adjust.json`에
+- `index.html#test-c-N` / `#test-f-N` → `openTest()`가 그 프레임 바로 촬영 화면 + 배율 패널 + `#testBar`(◀ ▶ 목록)
 
 ## 카메라 선택 (v4.7)
 - `startCamera()`: 먼저 앞 카메라(`facingMode: 'user'`)로 권한을 받고, `findExternalCam()`이 이름이 내장 카메라(`BUILTIN_CAM` 정규식: 전면/후면/front/back/desk view)가 아닌 카메라를 찾으면 그걸로 바꿈
