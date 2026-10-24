@@ -417,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.30';
+const APP_VERSION = 'v4.31';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -595,7 +595,15 @@ function compose(ctx, W, H) {
   if (cur.bg) {
     // 배경 → 사람만 오려서 위에 (마스크가 아직 없으면 배경만)
     ctx.drawImage(cur.bg, 0, 0, W, H);
-    if (cur.faceSpot) { for (const sp of [].concat(cur.faceSpot)) drawFaceSpot(ctx, W, H, sw, sh, sp); }
+    if (cur.faceSpot) {
+      const spots = [].concat(cur.faceSpot);
+      if (spots.length === 1) drawFaceSpot(ctx, W, H, sw, sh, spots[0]);
+      else {  // v4.31: 자리가 여러 개면 화면 왼쪽 사람부터 왼쪽 자리에. 사람이 자리보다 적으면 돌려 씀
+        const fs = sw && sh ? facesByX(sw, sh) : [];
+        const rank = spots.map((sp, i) => i).sort((i, j) => spots[i].x - spots[j].x);
+        rank.forEach((i, r) => drawFaceSpot(ctx, W, H, sw, sh, spots[i], fs.length ? fs[r % fs.length] : null));
+      }
+    }
     else if (cur.slot) { if (sw && sh && maskReady) drawSlot(ctx, W, H, sw, sh); }
     else if (cur.copies) { if (sw && sh && maskReady) drawCopies(ctx, W, H, sw, sh); }
     else if (cur.bubbles) { drawBubbles(ctx, W, H, sw, sh); }
@@ -927,7 +935,16 @@ function drawSlot(ctx, W, H, sw, sh) {
 const faceCanvas = document.createElement('canvas'), fctx = faceCanvas.getContext('2d');
 const HEAD = { down: 0.1, rx: 1.45, ry: 1.95 };  // 두 눈 가운데 기준 머리 타원 (d = 두 눈 사이 거리 배수)
 // v4.30: faceSpot을 배열로 주면 자리마다 그림. rotate(도) = 얼굴을 돌려서 넣음(180 = 뒤집기), alpha = 얼굴 투명도
-function drawFaceSpot(ctx, W, H, sw, sh, sp) {
+// 얼굴들 (영상 좌표) — 화면(거울) 왼쪽부터
+function faceOf(t, sw, sh) {
+  let a = { x: t.e1.x * sw, y: t.e1.y * sh }, b = { x: t.e2.x * sw, y: t.e2.y * sh };
+  if (a.x > b.x) [a, b] = [b, a];
+  return { a, b, d: Math.hypot(b.x - a.x, b.y - a.y) };
+}
+function facesByX(sw, sh) {
+  return tracks.map(t => faceOf(t, sw, sh)).filter(f => f.d >= 4).sort((p, q) => (q.a.x + q.b.x) - (p.a.x + p.b.x));
+}
+function drawFaceSpot(ctx, W, H, sw, sh, sp, face) {
   const s = W / cur.W;
   const cx = sp.x * s, cy = sp.y * s, tw = Math.round(sp.w * s), th = Math.round(sp.h * s);
   if (sp.glow !== false) {  // 해처럼 빛 번짐
@@ -939,14 +956,9 @@ function drawFaceSpot(ctx, W, H, sw, sh, sp) {
     ctx.restore();
   }
   if (!sw || !sh || !tracks.length) return;
-  // 가장 큰 얼굴 (영상 픽셀 좌표, 좌우반전 전)
-  let best = null, bd = 0;
-  for (const t of tracks) {
-    let a = { x: t.e1.x * sw, y: t.e1.y * sh }, b = { x: t.e2.x * sw, y: t.e2.y * sh };
-    if (a.x > b.x) [a, b] = [b, a];
-    const d = Math.hypot(b.x - a.x, b.y - a.y);
-    if (d > bd) { bd = d; best = { a, b, d }; }
-  }
+  // 정해 준 얼굴, 없으면 가장 큰 얼굴 (영상 픽셀 좌표, 좌우반전 전)
+  let best = face === undefined ? null : face;
+  if (face === undefined) for (const t of tracks) { const f = faceOf(t, sw, sh); if (!best || f.d > best.d) best = f; }
   if (!best || best.d < 4) return;
   const ang = Math.atan2(best.b.y - best.a.y, best.b.x - best.a.x);
   const m = mid(best.a, best.b);
