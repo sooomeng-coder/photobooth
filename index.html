@@ -392,7 +392,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.23';
+const APP_VERSION = 'v4.25';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -409,7 +409,7 @@ const IMG_START_BG = 'assets/start-bg.jpg';  // 시작 화면 기본 배경 (디
    프레임 추가: frames/ 폴더에 PNG를 넣고 frames.json 에 한 줄 추가
    { "name": "이름", "src": "frames/파일.png", "thumb": "frames/thumbs/파일.jpg" }  (thumb는 생략 가능) */
 const FRAMES_JSON = 'frames/frames.json';
-const FALLBACK_FRAMES = [{ name: 'FRAME 1', src: 'frames/frame1.png', thumb: 'frames/thumbs/frame1.jpg' }];
+const FALLBACK_FRAMES = [{ name: 'FRAME 4', src: 'frames/frame4.png', thumb: 'frames/thumbs/frame4.jpg' }];
 let FRAMES = [];
 
 async function loadFrames() {
@@ -470,6 +470,10 @@ function buildOverlay(img) {
   const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
   const d = ctx.getImageData(0, 0, W, H), p = d.data;
   const LO = 40, HI = 110; // 초록 우세 정도 임계값 (부드러운 경계)
+  // v4.25: 투명 구멍이 있는 프레임(대부분의 컷)은 초록을 빼지 않음 — 잔디·청사과·연두 배경이 카메라로 뚫리던 문제
+  let clear = 0;
+  for (let i = 3; i < p.length; i += 4) if (p[i] < 16) clear++;
+  if (clear > p.length / 4 * 0.003) { return c; }
   for (let i = 0; i < p.length; i += 4) {
     const r = p[i], g = p[i + 1], b = p[i + 2];
     const diff = g - Math.max(r, b);
