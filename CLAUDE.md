@@ -153,7 +153,7 @@ CHANGELOG.md             버전 기록 + 되돌리는 방법
 - PNG 저장 후 프린트. 파일명 `photobooth_9cut_…png` / `photobooth_4cut_…png`
 
 ## 드라이브 업로드·현장 흐름 (v4.26)
-- SAVE → 다운로드 + `queueUpload()`(JPEG 0.92로 바꿔 IndexedDB 큐 → `flushUploads()` → 앱스크립트 웹앱에 `{name,mime,data(base64)}` POST, 응답 `{ok:true}`면 큐에서 지움) → `#doneLayer` [확인] → `goHome()`
+- SAVE → (v4.28부터 다운로드 없음) `queueUpload()`(JPEG 0.92로 바꿔 IndexedDB 큐 → `flushUploads()` → 앱스크립트 웹앱에 `{name,mime,data(base64)}` POST, 응답 `{ok:true}`면 큐에서 지움) → `#doneLayer`("드라이브 이동 완료!" 뜰 때까지 확인 비활성) [확인] → `goHome()`. 9컷 시트엔 칼선 `drawCutLines()`(v4.27)
 - 받는 쪽 `tools/drive-upload.gs` (사용자가 script.google.com에 붙여 웹 앱으로 배포: 실행=나, 액세스=모든 사용자). 주소를 사용자가 보내오면 `CONFIG.UPLOAD_URL`에 넣고 push
 - 시작 화면 9컷만, 카운트다운 8초(모든 컷), 다음 컷 `autoShoot()`. 다시 찍기 = 시트에서 여러 컷 고르기(`toggleRetake`/`startRetakes`/`nextRetake`, `retakeQueue`), 시트당 2번
 

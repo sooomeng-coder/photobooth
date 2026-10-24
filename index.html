@@ -267,6 +267,10 @@
   #doneMsg { font-size: clamp(14px, 2.4vmin, 20px); color: #555; min-height: 1.4em; }
   #doneOk { margin-top: 8px; font-size: clamp(20px, 3.6vmin, 30px); font-weight: 800; padding: .5em 2.6em; border-radius: 999px; border: 0;
     background: #111; color: #fff; }
+  #doneOk:disabled { opacity: .3; }
+  #doneBox.wait h2::after { content: ''; display: inline-block; width: .8em; height: .8em; margin-left: .4em; vertical-align: -.05em;
+    border: 3px solid #ccc; border-top-color: #111; border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   /* 디자인 이미지로 바꾼 요소 (assets/ui/manifest.json, 디자인/ 폴더) */
   .skin { background-color: transparent !important; background-position: center !important; background-size: contain !important;
@@ -404,7 +408,7 @@
 </section>
 
 <div id="doneLayer" class="hidden"><div id="doneBox">
-  <h2>사진을 저장했어요</h2>
+  <h2 id="doneTitle">드라이브로 보내는 중…</h2>
   <div id="doneMsg"></div>
   <button id="doneOk">확인</button>
 </div></div>
@@ -413,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.27';
+const APP_VERSION = 'v4.28';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -1853,18 +1857,18 @@ function save() {
   const d = new Date(), z = n => String(n).padStart(2, '0');
   const tag = session ? `_${session.mode}cut` : '';
   const name = `${CONFIG.FILE_PREFIX}${tag}_${d.getFullYear()}${z(d.getMonth() + 1)}${z(d.getDate())}_${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}.png`;
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(resultBlob); a.download = name;
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-  // v4.26: 드라이브에 올리고(실패하면 기기에 모아 뒀다가 다시 시도), 확인을 누르면 처음 화면으로
-  const msg = $('doneMsg');
+  // v4.28: 다운로드 없이 드라이브로 바로 보냄. "드라이브 이동 완료!"가 뜬 뒤에 확인 → 처음 화면
+  // (못 보내면 아이패드에 모아 두고 인터넷이 되면 자동으로 다시 보냄)
+  const title = $('doneTitle'), msg = $('doneMsg'), ok = $('doneOk');
   $('doneLayer').classList.remove('hidden');
-  if (!uploadUrl()) { msg.textContent = ''; return; }
-  msg.textContent = '드라이브에 올리는 중…';
+  const finish = (t, m) => { title.textContent = t; msg.textContent = m; ok.disabled = false; $('doneBox').classList.remove('wait'); };
+  if (!uploadUrl()) return finish('업로드 주소가 없어요', '⚙ 길게 누르기 → [업로드 주소]에 넣어 주세요');
+  title.textContent = '드라이브로 보내는 중…'; msg.textContent = '잠깐만 기다려 주세요';
+  ok.disabled = true; $('doneBox').classList.add('wait');
   queueUpload(name.replace(/\.png$/, '.jpg'), resultBlob)
-    .then(ok => { msg.textContent = ok ? '드라이브에 올렸어요 ✓' : '인터넷이 되면 자동으로 드라이브에 올라가요'; })
-    .catch(() => { msg.textContent = '인터넷이 되면 자동으로 드라이브에 올라가요'; });
+    .then(done => done ? finish('드라이브 이동 완료!', '확인을 누르면 처음 화면으로 가요')
+                       : finish('아직 못 보냈어요', '사진은 아이패드에 있어요. 인터넷이 되면 자동으로 드라이브에 올라가요'))
+    .catch(() => finish('아직 못 보냈어요', '사진은 아이패드에 있어요. 인터넷이 되면 자동으로 드라이브에 올라가요'));
 }
 
 /* ================= 드라이브 업로드 (v4.26) =================
@@ -1895,7 +1899,9 @@ async function toJpeg(blob) {
 const blobB64 = b => new Promise((res, rej) => { const f = new FileReader(); f.onload = () => res(String(f.result).split(',')[1]); f.onerror = rej; f.readAsDataURL(b); });
 async function sendUpload(item) {
   const url = uploadUrl(); if (!url) return false;
-  const r = await fetch(url, { method: 'POST', body: JSON.stringify({ name: item.name, mime: item.blob.type || 'image/jpeg', data: await blobB64(item.blob) }) });
+  const ac = new AbortController(), t = setTimeout(() => ac.abort(), 60000);  // 60초 넘으면 실패로 보고 나중에 다시
+  const r = await fetch(url, { method: 'POST', signal: ac.signal, body: JSON.stringify({ name: item.name, mime: item.blob.type || 'image/jpeg', data: await blobB64(item.blob) }) })
+    .finally(() => clearTimeout(t));
   const j = await r.json().catch(() => ({}));
   return !!j.ok;
 }
