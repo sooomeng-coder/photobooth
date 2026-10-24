@@ -417,7 +417,7 @@
 
 <script>
 /* ================= 설정 ================= */
-const APP_VERSION = 'v4.33';
+const APP_VERSION = 'v4.34';
 const CONFIG = {
   // 시작 화면 문구 (줄바꿈은 \n)
   START_TITLE: '이유는 분명 있었고\n지금도 납득은 가지만\n어쩌구 사진관',
@@ -589,6 +589,7 @@ function setupAdjPanel() {
 // 사람만 오려낸 카메라 영상을 그릴 임시 캔버스
 const personCanvas = document.createElement('canvas'), pctx = personCanvas.getContext('2d');
 
+const splitCanvas = document.createElement('canvas'), spctx = splitCanvas.getContext('2d');
 function compose(ctx, W, H) {
   const sw = video.videoWidth, sh = video.videoHeight;
   ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
@@ -620,8 +621,15 @@ function compose(ctx, W, H) {
     // 카메라 한 화면을 프레임 전체 뒤에 깔고, 초록 구멍으로 보이게 함
     drawMirroredCover(ctx, video, sw, sh, 0, 0, W, H, camAdj());
   }
+  if (cur.ghost && cur.split) {  // v4.34: 나눠 찍기 — 첫 사진은 split 마스크 자리(위)에, 지금 카메라는 나머지(아래)에
+    if (splitCanvas.width !== W || splitCanvas.height !== H) { splitCanvas.width = W; splitCanvas.height = H; }
+    spctx.globalCompositeOperation = 'source-over'; spctx.clearRect(0, 0, W, H);
+    spctx.drawImage(cur.ghost, 0, 0, W, H);
+    spctx.globalCompositeOperation = 'destination-in'; spctx.drawImage(cur.split, 0, 0, W, H);
+    ctx.drawImage(splitCanvas, 0, 0);
+  }
   if (cur.overlay) ctx.drawImage(cur.overlay, 0, 0, W, H);
-  if (cur.ghost) { ctx.save(); ctx.globalAlpha = cur.double.preview || 0.4; ctx.drawImage(cur.ghost, 0, 0, W, H); ctx.restore(); }
+  if (cur.ghost && cur.double) { ctx.save(); ctx.globalAlpha = cur.double.preview || 0.4; ctx.drawImage(cur.ghost, 0, 0, W, H); ctx.restore(); }
   if (cur.bubbleGrain) drawGrain(ctx, W, H, cur.bubbleGrain);
   if (cur.stickers && sw && sh) drawStickers(ctx, W, H, sw, sh);
 }
@@ -1221,7 +1229,7 @@ function show(name) {
   for (const k in screens) screens[k].classList.toggle('active', k === name);
   cancelAnimationFrame(rafId);
   if (name !== 'shoot') { const p = $('adjPanel'); if (p) p.classList.add('hidden'); }
-  if (name === 'shoot') { $('shutterBtn').disabled = false; $('countdown').textContent = ''; if (!(cur && cur.double)) $('dblHint').classList.add('hidden'); loop(); }
+  if (name === 'shoot') { $('shutterBtn').disabled = false; $('countdown').textContent = ''; if (!(cur && (cur.double || cur.split))) $('dblHint').classList.add('hidden'); loop(); }
 }
 
 let startPick = null;
@@ -1533,7 +1541,9 @@ async function enterCut(k) {
   screens.shoot.querySelector('.stage').style.setProperty('--ar', cur.W / cur.H);  // 누운 컷은 가로로
   renderCutBar();
   show('shoot');
-  if (cur.double) { cur.ghost = null; showDblHint(); }  // v4.33: 9컷에서도 이중노출 (1)(2) 두 번 찍기
+  const cc = session.strip ? null : CUTS[session.picks[k]];
+  cur.split = cc && cc.split ? await loadImg(cc.split).catch(() => null) : null;
+  if (cur.double || cur.split) { cur.ghost = null; showDblHint(); }  // v4.33: 이중노출 (1)(2) / v4.34: 나눠 찍기(위 → 아래)
 }
 
 function renderCutBar() {
@@ -1844,7 +1854,7 @@ async function shoot() {
   compose(out.getContext('2d'), out.width, out.height);
 
   const f = $('flash'); f.classList.remove('go'); void f.offsetWidth; f.classList.add('go');
-  if (cur.double) {
+  if (cur.double || cur.split) {
     if (!cur.ghost) {  // 첫 번째 사진: 저장해 두고 두 번째 촬영으로 (화면에 옅게 겹쳐 보임)
       const g = document.createElement('canvas'); g.width = cur.W; g.height = cur.H;
       drawMirroredCover(g.getContext('2d'), video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H, camAdj());
@@ -1853,10 +1863,12 @@ async function shoot() {
       if (session) autoShoot();  // 9컷: 두 번째도 셔터 없이 바로 카운트다운
       return;
     }
-    // 두 번째 사진: 카메라 위에 첫 사진을 반투명으로 겹쳐 저장
+    // 두 번째 사진: 카메라 위에 첫 사진을 반투명으로 겹쳐 저장 (나눠 찍기는 compose가 이미 합쳐 둠)
+    if (cur.double) {
     const o = out.getContext('2d');
     drawMirroredCover(o, video, video.videoWidth, video.videoHeight, 0, 0, cur.W, cur.H, camAdj());
     o.globalAlpha = cur.double.mix || 0.5; o.drawImage(cur.ghost, 0, 0); o.globalAlpha = 1;
+    }
     $('dblHint').classList.add('hidden');
   }
   if (session) { busy = false; return onCutShot(session.strip ? stripShot() : out); }
@@ -1970,7 +1982,8 @@ function setupUpload() {
 
 function showDblHint() {
   const h = $('dblHint');
-  h.textContent = cur.ghost ? '2 / 2  첫 번째 사진에 겹쳐서 찍어요' : '1 / 2  첫 번째 사진';
+  h.textContent = cur.split ? (cur.ghost ? '2 / 2  아래 사진' : '1 / 2  위 사진')
+    : cur.ghost ? '2 / 2  첫 번째 사진에 겹쳐서 찍어요' : '1 / 2  첫 번째 사진';
   h.classList.remove('hidden');
 }
 function retake() {

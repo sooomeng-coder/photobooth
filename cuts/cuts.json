@@ -191,7 +191,7 @@
   {"name": "152", "src": "cuts/cut189.png", "thumb": "cuts/thumbs/cut189.jpg"},
   {"name": "153", "src": "cuts/cut190.png", "thumb": "cuts/thumbs/cut190.jpg"},
   {"name": "154", "src": "cuts/cut191.png", "thumb": "cuts/thumbs/cut191.jpg"},
-  {"name": "158", "src": "cuts/cut195.png", "thumb": "cuts/thumbs/cut195.jpg"},
+  {"name": "158", "src": "cuts/cut195.png", "thumb": "cuts/thumbs/cut195.jpg", "split": "assets/split/cut195_top.png"},
   {"name": "160", "src": "cuts/cut197.png", "thumb": "cuts/thumbs/cut197.jpg", "shootRotate": -90},
   {"name": "161", "src": "cuts/cut198.png", "thumb": "cuts/thumbs/cut198.jpg"},
   {"name": "162", "src": "cuts/cut199.png", "thumb": "cuts/thumbs/cut199.jpg", "shootRotate": -90},

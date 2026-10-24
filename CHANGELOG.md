@@ -15,6 +15,9 @@ git checkout <버전의 커밋> -- index.html tools .github
 git commit -m "v3.0으로 되돌림" && git push origin HEAD:main
 ```
 
+## v4.34 — 나눠 찍기
+- cuts.json 항목에 `split: <마스크 png>`(흰색 = 첫 사진 자리) → 그 칸은 두 번 찍음: 1번째는 위, 2번째(자동 카운트다운)는 아래. 예: #193 158(`assets/split/cut195_top.png`)
+
 ## v4.33 — 이중노출 9컷에서도
 - 이중노출을 9컷에서 고를 수 있음: 그 칸은 (1)(2) 두 번 찍어 겹침(두 번째도 자동 카운트다운). 가로라 9컷 칸에는 돌려서 들어감
 - 공주의 규칙(띠 4컷) 삭제 (285 → 284개)
