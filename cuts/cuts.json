@@ -101,7 +101,7 @@
   {"name": "076", "src": "cuts/cut113.png", "thumb": "cuts/thumbs/cut113.jpg"},
   {"name": "077", "src": "cuts/cut114.png", "thumb": "cuts/thumbs/cut114.jpg"},
   {"name": "078", "src": "cuts/cut115.png", "thumb": "cuts/thumbs/cut115.jpg"},
-  {"name": "079", "src": "cuts/cut116.png", "thumb": "cuts/thumbs/cut116.jpg"},
+  {"name": "079 얼굴", "frame": "079 얼굴", "src": "frames/thumbs/079 얼굴.jpg", "thumb": "cuts/thumbs/cut116.jpg"},
   {"name": "080", "src": "cuts/cut117.png", "thumb": "cuts/thumbs/cut117.jpg"},
   {"name": "081", "src": "cuts/cut118.png", "thumb": "cuts/thumbs/cut118.jpg"},
   {"name": "082", "src": "cuts/cut119.png", "thumb": "cuts/thumbs/cut119.jpg"},
