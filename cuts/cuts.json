@@ -87,7 +87,7 @@
   {"name": "061 얼굴", "frame": "061 얼굴", "src": "frames/thumbs/061 얼굴.jpg", "thumb": "cuts/thumbs/cut98.jpg"},
   {"name": "062", "src": "cuts/cut99.png", "thumb": "cuts/thumbs/cut99.jpg"},
   {"name": "063 얼굴", "frame": "063 얼굴", "src": "frames/thumbs/063 얼굴.jpg", "thumb": "cuts/thumbs/cut100.jpg"},
-  {"name": "064 얼굴", "frame": "064 얼굴", "src": "frames/thumbs/064 얼굴.jpg", "thumb": "cuts/thumbs/cut101.jpg"},
+  {"name": "064", "src": "cuts/cut101.png", "thumb": "cuts/thumbs/cut101.jpg"},
   {"name": "065", "src": "cuts/cut102.png", "thumb": "cuts/thumbs/cut102.jpg"},
   {"name": "066", "src": "cuts/cut103.png", "thumb": "cuts/thumbs/cut103.jpg"},
   {"name": "067 얼굴", "frame": "067 얼굴", "src": "frames/thumbs/067 얼굴.jpg", "thumb": "cuts/thumbs/cut104.jpg"},
